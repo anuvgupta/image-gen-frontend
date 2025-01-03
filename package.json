@@ -1,0 +1,57 @@
+{
+    "name": "image-gen-frontend",
+    "version": "1.0.0",
+    "description": "Simple frontend for image generation worker",
+    "license": "ISC",
+    "author": "Anuv Gupta",
+    "keywords": [],
+    "scripts": {
+        "build": "npm run webpack-build",
+        "webpack-build": "webpack --config webpack.config.js",
+        "clean": "rm -rf dist",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "@aws-crypto/sha256-js": "^5.2.0",
+        "@aws-sdk/client-cognito-identity": "^3.726.1",
+        "@aws-sdk/credential-providers": "^3.726.1",
+        "@aws-sdk/protocol-http": "^3.370.0",
+        "@aws-sdk/signature-v4": "^3.370.0"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.26.0",
+        "@babel/preset-env": "^7.26.0",
+        "assert": "^2.1.0",
+        "autoprefixer": "^10.4.20",
+        "babel-loader": "^9.2.1",
+        "buffer": "^6.0.3",
+        "clean-webpack-plugin": "^4.0.0",
+        "copy-webpack-plugin": "^12.0.2",
+        "css-loader": "^7.1.2",
+        "css-minimizer-webpack-plugin": "^7.0.0",
+        "cssnano": "^7.0.6",
+        "exports-loader": "^5.0.0",
+        "html-webpack-plugin": "^5.6.3",
+        "imports-loader": "^5.0.0",
+        "mini-css-extract-plugin": "^2.9.2",
+        "os-browserify": "^0.3.0",
+        "path-browserify": "^1.0.1",
+        "postcss": "^8.4.49",
+        "postcss-loader": "^8.1.1",
+        "process": "^0.11.10",
+        "stream-browserify": "^3.0.0",
+        "terser-webpack-plugin": "^5.3.11",
+        "url": "^0.11.4",
+        "util": "^0.12.5",
+        "webpack": "^5.97.1",
+        "webpack-cli": "^6.0.1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/anuvgupta/image-gen-frontend.git"
+    },
+    "bugs": {
+        "url": "https://github.com/anuvgupta/image-gen-frontend/issues"
+    },
+    "homepage": "https://github.com/anuvgupta/image-gen-frontend#readme"
+}
