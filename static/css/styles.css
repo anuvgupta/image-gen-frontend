@@ -1,0 +1,362 @@
+/* styles.css */
+
+/* Navigation bar styles */
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300italic,600italic,300,400,500,600");
+
+/* Theme variables */
+:root {
+    /* Light theme variables */
+    --bg-color: #f5f5f5;
+    --container-bg: white;
+    --text-color: #000000;
+    --border-color: #ddd;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --navbar-bg: #007bff;
+    --navbar-text: white;
+    --input-bg: white;
+    --error-color: #dc3545;
+    --placeholder-border: #ddd;
+    --placeholder-text: #666;
+    --progress-bg: #f0f0f0;
+    --status-text: #666;
+    --details-text: #888;
+}
+
+/* Dark theme variables */
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+    --container-bg: #2d2d2d;
+    --text-color: #ffffff;
+    --border-color: #404040;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --navbar-bg: #222222;
+    --navbar-text: #ffffff;
+    --input-bg: #3d3d3d;
+    --error-color: #ff6b6b;
+    --placeholder-border: #404040;
+    --placeholder-text: #999;
+    --progress-bg: #404040;
+    --status-text: #999;
+    --details-text: #888;
+}
+
+/* Prevent theme flash */
+.theme-transition-disabled * {
+    transition: none !important;
+}
+
+/* Reset and base styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.navbar {
+    background-color: var(--navbar-bg);
+    color: var(--navbar-text);
+    padding: 1.2rem 2rem;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    display: flex;
+    align-items: center;
+}
+
+.navbar h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    font-family: "Source Sans Pro", Trebuchet, Verdana, Helvetica, Arial, sans-serif;
+    letter-spacing: -0.5px;
+}
+
+.navbar .icon {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+    /* background-image: url(/img/gradient_w.svg); */
+    /* background-size: cover; */
+    /* background-position: center; */
+    /* background-repeat: no-repeat; */
+}
+
+.navbar .icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Main content styles */
+.main-content {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.container {
+    background-color: var(--container-bg);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
+.spinner {
+    width: 30px;
+    height: 30px;
+}
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    opacity: 0.3;
+}
+
+textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    outline: none;
+    resize: vertical;
+    min-height: 120px;
+    font-family: inherit;
+    line-height: 1.5;
+    box-sizing: border-box;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+select {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    outline: none;
+    height: 48px;
+    box-sizing: border-box;
+    cursor: pointer;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    height: 48px;
+}
+
+textarea:focus,
+select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.error {
+    color: var(--error-color);
+    margin-bottom: 1rem;
+}
+
+.image-container {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.image-placeholder {
+    height: 300px;
+    width: 100%;
+    border: 2px dashed var(--placeholder-border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--placeholder-text);
+}
+
+.generated-image {
+    max-width: 100%;
+    border-radius: 4px;
+    display: none;
+}
+
+.progress-container {
+    margin-top: 1rem;
+    display: none;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: var(--progress-bg);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #007bff;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-status {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--status-text);
+}
+
+.status-details {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--details-text);
+}
+
+.select-group {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+.select-group select {
+    flex: 1;
+}
+
+/* Add responsive behavior for mobile screens */
+@media (max-width: 585px) {
+    .select-group {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .select-group select {
+        width: 100%;
+    }
+
+    /* Adjust container padding for mobile */
+    .container {
+        padding: 1.25rem;
+    }
+}
+
+[data-theme="dark"] .navbar h1 {
+    opacity: 0.85;
+    /* Slightly reduce opacity of navbar title */
+}
+
+[data-theme="dark"] .navbar .icon {
+    opacity: 0.85;
+    /* Slightly reduce opacity of navbar icon */
+}
+
+/* Dark mode form element placeholder styles */
+@media (prefers-color-scheme: dark) {
+
+    textarea::placeholder,
+    select::placeholder {
+        color: #888;
+    }
+}
+
+.theme-toggle-bar {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    background-color: var(--container-bg);
+    padding: 0.5rem;
+    border-radius: 2rem;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+}
+
+.theme-toggle-bar:hover {
+    transform: translateY(-2px);
+}
+
+.theme-toggle {
+    width: auto;
+    height: auto;
+    padding: 1.20rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--navbar-bg);
+    transition: background-color 0.3s ease;
+}
+
+.theme-toggle:hover {
+    background-color: #0056b3;
+}
+
+.theme-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    position: absolute;
+    transition: all 0.3s ease;
+    display: none;
+}
+
+/* Show moon icon by default (light mode) */
+.moon-icon {
+    display: block;
+}
+
+/* In dark mode, show sun icon and hide moon icon */
+[data-theme="dark"] .sun-icon {
+    display: block;
+}
+
+[data-theme="dark"] .moon-icon {
+    display: none;
+}
+
+/* Make toggle bar responsive */
+@media (max-width: 768px) {
+    .theme-toggle-bar {
+        bottom: 1rem;
+        right: 1rem;
+    }
+
+    .theme-toggle {
+        padding: 0.5rem;
+    }
+
+    .theme-icon {
+        font-size: 1rem;
+    }
+}

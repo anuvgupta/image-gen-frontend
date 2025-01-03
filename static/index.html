@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Image Generator</title>
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <script>
+            // Immediately try to get system preference
+            (function () {
+                function getInitialTheme() {
+                    const darkQuery = window.matchMedia(
+                        "(prefers-color-scheme: dark)"
+                    );
+                    if (darkQuery.matches) return "dark";
+
+                    const hours = new Date().getHours();
+                    return hours >= 18 || hours <= 6 ? "dark" : "light";
+                }
+
+                // Add class to disable transitions initially
+                document.documentElement.classList.add(
+                    "theme-transition-disabled"
+                );
+                // Set theme from system preference
+                document.documentElement.setAttribute(
+                    "data-theme",
+                    getInitialTheme()
+                );
+            })();
+        </script>
+    </head>
+    <body>
+        <nav class="navbar">
+            <div class="icon">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="24px"
+                    viewBox="0 0 24 24"
+                    width="24px"
+                    fill="#ffffff"
+                >
+                    <path d="M0 0h24v24H0z" fill="none" />
+                    <path
+                        d="M11 9h2v2h-2zm-2 2h2v2H9zm4 0h2v2h-2zm2-2h2v2h-2zM7 9h2v2H7zm12-6H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 18H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7h-2v2h2v2h-2v-2h-2v2h-2v-2h-2v2H9v-2H7v2H5v-2h2v-2H5V5h14v6z"
+                    />
+                </svg>
+            </div>
+            <h1>Image Generator</h1>
+        </nav>
+
+        <div class="main-content">
+            <div class="container">
+                <div class="input-group">
+                    <textarea
+                        id="promptInput"
+                        placeholder="Enter your prompt..."
+                        aria-label="Image prompt"
+                    ></textarea>
+                    <div class="select-group">
+                        <select
+                            id="workflowSelect"
+                            aria-label="Workflow type"
+                        ></select>
+                        <select
+                            id="aspectRatioSelect"
+                            aria-label="Aspect ratio"
+                        ></select>
+                    </div>
+                    <button id="generateBtn">Generate</button>
+                </div>
+
+                <div
+                    id="errorMessage"
+                    class="error"
+                    style="display: none"
+                ></div>
+
+                <div id="progressContainer" class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <div id="progressStatus" class="progress-status">
+                        Loading...
+                    </div>
+                    <div id="statusDetails" class="status-details"></div>
+                </div>
+
+                <div class="image-container">
+                    <div id="imagePlaceholder" class="image-placeholder">
+                        <div
+                            class="loading-spinner"
+                            id="loadingSpinner"
+                            style="display: none"
+                        >
+                            <img
+                                src="/img/loading.svg"
+                                alt="Loading image"
+                                class="spinner"
+                            />
+                        </div>
+                        <div id="placeholderText">...</div>
+                    </div>
+                    <img
+                        id="generatedImage"
+                        class="generated-image"
+                        alt="Generated image"
+                    />
+                </div>
+            </div>
+        </div>
+
+        <div class="theme-toggle-bar">
+            <button
+                class="theme-toggle"
+                aria-label="Switch to dark theme"
+                aria-pressed="false"
+            >
+                <svg
+                    class="theme-icon sun-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <circle cx="12" cy="12" r="5" />
+                    <path
+                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                    />
+                </svg>
+                <svg
+                    class="theme-icon moon-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+        </div>
+    </body>
+</html>
