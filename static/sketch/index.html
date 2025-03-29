@@ -278,8 +278,79 @@
             const canvasContainer = document.getElementById("canvas-container");
 
             // Canvas history for undo functionality
-            const history = [];
+            let history = [];
             let currentStep = -1;
+
+            // LocalStorage keys
+            const STORAGE_KEY_HISTORY = "sketch-app-history";
+            const STORAGE_KEY_CURRENT_STEP = "sketch-app-current-step";
+            const STORAGE_KEY_LAST_SAVED = "sketch-app-last-saved";
+
+            // Load saved state from localStorage if available
+            function loadFromLocalStorage() {
+                try {
+                    const savedHistory =
+                        localStorage.getItem(STORAGE_KEY_HISTORY);
+                    const savedCurrentStep = localStorage.getItem(
+                        STORAGE_KEY_CURRENT_STEP
+                    );
+
+                    if (savedHistory && savedCurrentStep) {
+                        history = JSON.parse(savedHistory);
+                        currentStep = parseInt(savedCurrentStep);
+
+                        // If we have a valid state, restore it
+                        if (
+                            history.length > 0 &&
+                            currentStep >= 0 &&
+                            currentStep < history.length
+                        ) {
+                            console.log(
+                                `Loaded saved sketch with ${history.length} steps, currently at step ${currentStep}`
+                            );
+
+                            // Ensure we wait for the canvas to be sized correctly before loading image
+                            setTimeout(() => {
+                                showStatus("Found your last sketch", 3000);
+                            }, 100);
+
+                            return true;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error loading from localStorage:", error);
+                    // If there's an error parsing JSON, clear the corrupt data
+                    localStorage.removeItem(STORAGE_KEY_HISTORY);
+                    localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
+                    localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
+                }
+                return false;
+            }
+
+            // Save current state to localStorage
+            function saveToLocalStorage() {
+                try {
+                    localStorage.setItem(
+                        STORAGE_KEY_HISTORY,
+                        JSON.stringify(history)
+                    );
+                    localStorage.setItem(
+                        STORAGE_KEY_CURRENT_STEP,
+                        currentStep.toString()
+                    );
+                    localStorage.setItem(
+                        STORAGE_KEY_LAST_SAVED,
+                        new Date().toISOString()
+                    );
+                    console.log(
+                        `Saved sketch to localStorage with ${history.length} steps, currently at step ${currentStep}`
+                    );
+                } catch (error) {
+                    console.error("Error saving to localStorage:", error);
+                    // If storage quota is exceeded, we could implement a cleanup strategy here
+                    // For example, remove older history states or compress the data
+                }
+            }
 
             // Resize canvas to fill container
             function resizeCanvas() {
@@ -288,8 +359,14 @@
                 redrawCanvas();
             }
 
-            // Initial canvas sizing
+            // Initial canvas sizing and set initial drawing properties
             resizeCanvas();
+
+            // Drawing settings - set these before loading
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = "#000";
 
             // Resize canvas when window size changes
             window.addEventListener("resize", resizeCanvas);
@@ -303,6 +380,9 @@
 
                 currentStep++;
                 history.push(canvas.toDataURL());
+
+                // Save to localStorage after updating history
+                saveToLocalStorage();
 
                 // Enable/disable undo button based on history
                 document.getElementById("undo-button").disabled =
@@ -329,6 +409,9 @@
                     } else {
                         ctx.globalCompositeOperation = "source-over";
                     }
+
+                    // Save to localStorage after restoring state
+                    saveToLocalStorage();
                 };
                 img.src = history[currentStep];
 
@@ -359,14 +442,31 @@
                 saveState();
             }
 
-            // Initialize with a blank state
-            saveState();
+            // Try to load existing sketch, or initialize with a blank state
+            if (!loadFromLocalStorage()) {
+                saveState(); // Initialize with a blank state if nothing to load
+            } else {
+                // If we loaded history successfully, we need to restore the canvas
+                // using the current step from history
+                const img = new Image();
+                img.onload = function () {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.drawImage(img, 0, 0);
 
-            // Drawing settings
-            ctx.lineJoin = "round";
-            ctx.lineCap = "round";
-            ctx.lineWidth = 5;
-            ctx.strokeStyle = "#000";
+                    // Reset to current tool setting after redrawing
+                    if (currentTool === "eraser") {
+                        ctx.globalCompositeOperation = "destination-out";
+                    }
+
+                    // Update the undo button state
+                    document.getElementById("undo-button").disabled =
+                        currentStep <= 0;
+                };
+                img.src = history[currentStep];
+            }
+
+            // Drawing state variables
 
             // Drawing state
             let isDrawing = false;
@@ -544,7 +644,58 @@
 
             document
                 .getElementById("clear-button")
-                .addEventListener("click", clearCanvas);
+                .addEventListener("click", () => {
+                    if (
+                        confirm(
+                            "Are you sure you want to clear the canvas?" // + " This cannot be undone."
+                        )
+                    ) {
+                        clearCanvas();
+                        // After clearing, we should update localStorage
+                        saveToLocalStorage();
+                    }
+                });
+
+            // Add a button to delete saved data
+            const controlsContainer =
+                document.getElementById("canvas-controls");
+            const resetStorageButton = document.createElement("button");
+            resetStorageButton.id = "reset-storage-button";
+            resetStorageButton.innerHTML = `
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+        <line x1="18" y1="9" x2="12" y2="15"></line>
+        <line x1="12" y1="9" x2="18" y2="15"></line>
+    </svg>
+   Forget Sketch
+`;
+
+            // Create a new tool group for the reset button
+            const resetToolGroup = document.createElement("div");
+            resetToolGroup.className = "tool-group";
+            resetToolGroup.appendChild(resetStorageButton);
+            controlsContainer.appendChild(resetToolGroup);
+
+            // Add event listener for the reset storage button
+            resetStorageButton.addEventListener("click", () => {
+                if (
+                    confirm(
+                        "This will forget your sketch and your undo history. Are you sure?"
+                    )
+                ) {
+                    localStorage.removeItem(STORAGE_KEY_HISTORY);
+                    localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
+                    localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
+
+                    // Reset the canvas and history
+                    history = [];
+                    currentStep = -1;
+                    clearCanvas();
+                    saveState(); // Initialize with a blank state
+
+                    alert("Sketch & history have been forgotten.");
+                }
+            });
 
             // Handle prompt submission
             const promptInput = document.getElementById("prompt-input");
@@ -566,6 +717,46 @@
                     submitButton.click();
                 }
             });
+
+            // Create status indicator
+            const statusIndicator = document.createElement("div");
+            statusIndicator.id = "storage-status";
+            statusIndicator.style.position = "absolute";
+            statusIndicator.style.bottom = "10px";
+            statusIndicator.style.left = "10px";
+            statusIndicator.style.backgroundColor = "rgba(0,0,0,0.5)";
+            statusIndicator.style.color = "white";
+            statusIndicator.style.padding = "5px 10px";
+            statusIndicator.style.borderRadius = "4px";
+            statusIndicator.style.fontSize = "12px";
+            statusIndicator.style.opacity = "0";
+            statusIndicator.style.transition = "opacity 0.3s";
+            canvasContainer.appendChild(statusIndicator);
+
+            // Function to show a status message temporarily
+            function showStatus(message, duration = 2000) {
+                statusIndicator.textContent = message;
+                statusIndicator.style.opacity = "1";
+
+                setTimeout(() => {
+                    statusIndicator.style.opacity = "0";
+                }, duration);
+            }
+
+            // Override saveToLocalStorage to show status
+            const originalSaveToLocalStorage = saveToLocalStorage;
+            saveToLocalStorage = function () {
+                originalSaveToLocalStorage();
+                showStatus("Sketch saved");
+            };
+
+            // Display last saved time if available
+            const lastSaved = localStorage.getItem(STORAGE_KEY_LAST_SAVED);
+            if (lastSaved) {
+                const date = new Date(lastSaved);
+                const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                showStatus(`Last saved: ${formattedDate}`, 3000);
+            }
         </script>
     </body>
 </html>
