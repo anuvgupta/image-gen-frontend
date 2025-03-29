@@ -17,6 +17,7 @@ const CSS_STYLES_FOLDER = "./static/css";
 const JS_SCRIPTS_FOLDER = "./static/js";
 const IMG_ASSET_FOLDER = "./static/img";
 const FAVICON_PATH = "static/favicon.ico";
+const SKETCH_FOLDER = "./static/sketch";
 
 // Helper function to minify inline JS
 async function minifyInlineJs(code) {
@@ -70,8 +71,10 @@ const errorHtmlPlugins = errorPages.map(
 module.exports = {
     mode: "production",
     entry: {
-        bundle: [`${JS_SCRIPTS_FOLDER}/main.js`],
+        main: [`${JS_SCRIPTS_FOLDER}/main.js`],
         styles: `${CSS_STYLES_FOLDER}/styles.css`,
+        sketch_main: [`${JS_SCRIPTS_FOLDER}/sketch/main.js`],
+        sketch_styles: [`${CSS_STYLES_FOLDER}/sketch/styles.css`],
     },
     output: {
         path: path.resolve(__dirname, "dist"),
@@ -135,8 +138,22 @@ module.exports = {
         new HtmlWebpackPlugin({
             template: "./static/index.html",
             filename: "index.html",
-            chunks: ["bundle", "styles"],
+            chunks: ["main", "styles"],
             templateParameters: templateHelpers, // Use template helpers here
+            minify: {
+                removeAttributeQuotes: true,
+                collapseWhitespace: true,
+                removeComments: true,
+                minifyJS: true,
+                minifyCSS: true,
+            },
+            inject: true,
+        }),
+        new HtmlWebpackPlugin({
+            template: `${SKETCH_FOLDER}/index.html`,
+            filename: "sketch/index.html",
+            chunks: ["sketch_main", "sketch_styles"],
+            templateParameters: templateHelpers,
             minify: {
                 removeAttributeQuotes: true,
                 collapseWhitespace: true,
@@ -160,7 +177,21 @@ module.exports = {
                     from: `${FAVICON_PATH}`, // Copy favicon
                     to: "favicon.ico",
                 },
+                {
+                    from: `${SKETCH_FOLDER}`,
+                    to: "sketch",
+                    globOptions: {
+                        ignore: ["**/index.html"], // Don't copy index.html as it will be processed by HtmlWebpackPlugin
+                    },
+                    noErrorOnMissing: true,
+                },
             ],
         }),
     ],
+    devServer: {
+        static: "./dist",
+        hot: true,
+        port: 8080,
+        open: true,
+    },
 };

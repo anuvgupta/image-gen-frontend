@@ -2,6 +2,7 @@
     "package": "image-gen-frontend",
     "targets": {
         "build": "npm run build",
+        "start": "npm run start",
         "clean": "npm run clean",
         "install": "npm install",
         "webpack": "npm run webpack-build"

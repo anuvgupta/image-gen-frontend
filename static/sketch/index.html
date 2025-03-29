@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Canvas Drawing Tool</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                font-family: Arial, sans-serif;
+            }
+            #canvas-container {
+                flex-grow: 1;
+                position: relative;
+                background-color: #f5f5f5;
+            }
+            canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                cursor: crosshair;
+            }
+            #canvas-controls {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                display: flex;
+                gap: 10px;
+                background-color: rgba(255, 255, 255, 0.9);
+                padding: 8px 10px;
+                border-radius: 6px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+            #canvas-controls button {
+                background-color: rgba(255, 255, 255, 0.8);
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 8px 12px;
+                cursor: pointer;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                transition: background-color 0.2s;
+            }
+            #canvas-controls button:hover {
+                background-color: rgba(255, 255, 255, 1);
+            }
+            #canvas-controls button.active {
+                background-color: #e6f7ff;
+                border-color: #1890ff;
+            }
+            .tool-group {
+                display: flex;
+                align-items: center;
+                border-right: 1px solid #eee;
+                padding-right: 10px;
+                margin-right: 0;
+                gap: 5px;
+            }
+            .tool-group:last-child {
+                border-right: none;
+                padding-right: 0;
+                margin-right: 0;
+            }
+            .brush-size-control {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .brush-size-btn {
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                border: 1px solid #ccc;
+                background-color: white;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            }
+            .brush-size-btn div {
+                background-color: #000;
+                border-radius: 50%;
+            }
+            .brush-size-small div {
+                width: 3px;
+                height: 3px;
+                min-width: 3px;
+                min-height: 3px;
+            }
+            .brush-size-medium div {
+                width: 5px;
+                height: 5px;
+                min-width: 5px;
+                min-height: 5px;
+            }
+            .brush-size-large div {
+                width: 10px;
+                height: 10px;
+                min-width: 10px;
+                min-height: 10px;
+            }
+            .brush-size-xlarge div {
+                width: 16px;
+                height: 16px;
+                min-width: 16px;
+                min-height: 16px;
+            }
+            .brush-size-xxlarge div {
+                width: 24px;
+                height: 24px;
+                min-width: 24px;
+                min-height: 24px;
+            }
+            #bottom-bar {
+                border-top: 1px solid #eee;
+                background-color: #f5f5f5;
+                color: white;
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            #prompt-input {
+                padding: 15px;
+                border-radius: 4px;
+                border: none;
+                width: calc(100% - 16px);
+                font-size: 16px;
+                min-height: 100px;
+                resize: none;
+                font-family: Arial, sans-serif;
+            }
+            #submit-button {
+                padding: 15px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                width: 100%;
+            }
+            #submit-button:hover {
+                background-color: #1987fc;
+            }
+            .icon {
+                width: 16px;
+                height: 16px;
+                display: inline-block;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container">
+            <canvas id="drawing-canvas"></canvas>
+            <div id="canvas-controls">
+                <div class="tool-group">
+                    <button id="pen-button" class="active">
+                        <svg
+                            class="icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                            ></path>
+                        </svg>
+                        Pen
+                    </button>
+                    <button id="eraser-button">
+                        <svg
+                            class="icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="M18 13l-5 5-10-10 5-5 10 10z"></path>
+                            <path d="M13 18l7-7"></path>
+                        </svg>
+                        Eraser
+                    </button>
+                </div>
+                <div class="tool-group brush-size-control">
+                    <button
+                        class="brush-size-btn brush-size-small"
+                        data-size="3"
+                    >
+                        <div></div>
+                    </button>
+                    <button
+                        class="brush-size-btn brush-size-medium active"
+                        data-size="5"
+                    >
+                        <div></div>
+                    </button>
+                    <button
+                        class="brush-size-btn brush-size-large"
+                        data-size="10"
+                    >
+                        <div></div>
+                    </button>
+                    <button
+                        class="brush-size-btn brush-size-xlarge"
+                        data-size="16"
+                    >
+                        <div></div>
+                    </button>
+                    <button
+                        class="brush-size-btn brush-size-xxlarge"
+                        data-size="24"
+                    >
+                        <div></div>
+                    </button>
+                </div>
+                <div class="tool-group">
+                    <button id="undo-button">
+                        <svg
+                            class="icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                d="M3 10h10a8 8 0 0 1 8 8v0a8 8 0 0 1-8 8h-8"
+                            ></path>
+                            <path d="M3 10l5-5"></path>
+                            <path d="M3 10l5 5"></path>
+                        </svg>
+                        Undo
+                    </button>
+                    <button id="clear-button">
+                        <svg
+                            class="icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <rect
+                                x="3"
+                                y="3"
+                                width="18"
+                                height="18"
+                                rx="2"
+                            ></rect>
+                            <path d="M7 7l10 10"></path>
+                            <path d="M17 7l-10 10"></path>
+                        </svg>
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="bottom-bar">
+            <textarea
+                id="prompt-input"
+                placeholder="Describe your sketch. What is it? How do you want the final result to look?"
+            ></textarea>
+            <button id="submit-button">Imagine</button>
+        </div>
+
+        <script>
+            // Canvas setup
+            const canvas = document.getElementById("drawing-canvas");
+            const ctx = canvas.getContext("2d");
+            const canvasContainer = document.getElementById("canvas-container");
+
+            // Canvas history for undo functionality
+            const history = [];
+            let currentStep = -1;
+
+            // Resize canvas to fill container
+            function resizeCanvas() {
+                canvas.width = canvasContainer.clientWidth;
+                canvas.height = canvasContainer.clientHeight;
+                redrawCanvas();
+            }
+
+            // Initial canvas sizing
+            resizeCanvas();
+
+            // Resize canvas when window size changes
+            window.addEventListener("resize", resizeCanvas);
+
+            // Save the current state of the canvas
+            function saveState() {
+                // Limit history size to prevent memory issues
+                if (currentStep < history.length - 1) {
+                    history.splice(currentStep + 1);
+                }
+
+                currentStep++;
+                history.push(canvas.toDataURL());
+
+                // Enable/disable undo button based on history
+                document.getElementById("undo-button").disabled =
+                    currentStep <= 0;
+            }
+
+            // Restore canvas to a previous state
+            function restoreState(step) {
+                if (step < 0 || step >= history.length) return;
+
+                currentStep = step;
+
+                const img = new Image();
+                img.onload = function () {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Important: Reset the composite operation to default before drawing
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.drawImage(img, 0, 0);
+
+                    // Reset to current tool setting after redrawing
+                    if (currentTool === "eraser") {
+                        ctx.globalCompositeOperation = "destination-out";
+                    } else {
+                        ctx.globalCompositeOperation = "source-over";
+                    }
+                };
+                img.src = history[currentStep];
+
+                // Enable/disable undo button based on history
+                document.getElementById("undo-button").disabled =
+                    currentStep <= 0;
+            }
+
+            // Redraw the canvas from current state
+            function redrawCanvas() {
+                if (currentStep >= 0) {
+                    restoreState(currentStep);
+                }
+            }
+
+            // Clear the canvas
+            function clearCanvas() {
+                // Store the current composite operation
+                const currentCompositeOperation = ctx.globalCompositeOperation;
+
+                // Reset to default for clearing
+                ctx.globalCompositeOperation = "source-over";
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Restore the composite operation
+                ctx.globalCompositeOperation = currentCompositeOperation;
+
+                saveState();
+            }
+
+            // Initialize with a blank state
+            saveState();
+
+            // Drawing settings
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = "#000";
+
+            // Drawing state
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            let hasDrawnSinceLastSave = false;
+            let currentTool = "pen"; // pen or eraser
+            const defaultBrushColor = "#000";
+
+            // Start drawing on mouse down
+            canvas.addEventListener("mousedown", (e) => {
+                isDrawing = true;
+                hasDrawnSinceLastSave = false;
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+            });
+
+            // Draw on mouse move if drawing is active
+            canvas.addEventListener("mousemove", (e) => {
+                if (!isDrawing) return;
+
+                // Calculate the current mouse position
+                const currentX = e.offsetX;
+                const currentY = e.offsetY;
+
+                // Use quadratic curves for smoother lines
+                ctx.beginPath();
+
+                // If this is the start of a new stroke, just move to the point
+                if (!hasDrawnSinceLastSave) {
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(currentX, currentY);
+                } else {
+                    // For continuing strokes, use quadratic curves for smoother lines
+                    // Calculate a midpoint between the last point and current point
+                    const midX = (lastX + currentX) / 2;
+                    const midY = (lastY + currentY) / 2;
+
+                    // Use the midpoint as the control point for a quadratic curve
+                    ctx.moveTo(lastX, lastY);
+                    ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+                    ctx.lineTo(currentX, currentY);
+                }
+
+                ctx.stroke();
+
+                // Update the last position for the next move
+                [lastX, lastY] = [currentX, currentY];
+                hasDrawnSinceLastSave = true;
+            });
+
+            // Stop drawing when mouse is released or leaves canvas
+            canvas.addEventListener("mouseup", () => {
+                if (isDrawing && hasDrawnSinceLastSave) {
+                    saveState();
+                }
+                isDrawing = false;
+            });
+
+            canvas.addEventListener("mouseout", () => {
+                if (isDrawing && hasDrawnSinceLastSave) {
+                    saveState();
+                }
+                isDrawing = false;
+            });
+
+            // Touch support for mobile devices
+            canvas.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const touchX = touch.clientX - rect.left;
+                const touchY = touch.clientY - rect.top;
+
+                isDrawing = true;
+                hasDrawnSinceLastSave = false;
+                [lastX, lastY] = [touchX, touchY];
+            });
+
+            canvas.addEventListener("touchmove", (e) => {
+                e.preventDefault();
+                if (!isDrawing) return;
+
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const touchX = touch.clientX - rect.left;
+                const touchY = touch.clientY - rect.top;
+
+                // Use quadratic curves for smoother lines
+                ctx.beginPath();
+
+                // If this is the start of a new stroke, just move to the point
+                if (!hasDrawnSinceLastSave) {
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(touchX, touchY);
+                } else {
+                    // For continuing strokes, use quadratic curves for smoother lines
+                    const midX = (lastX + touchX) / 2;
+                    const midY = (lastY + touchY) / 2;
+
+                    ctx.moveTo(lastX, lastY);
+                    ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+                    ctx.lineTo(touchX, touchY);
+                }
+
+                ctx.stroke();
+
+                [lastX, lastY] = [touchX, touchY];
+                hasDrawnSinceLastSave = true;
+            });
+
+            canvas.addEventListener("touchend", (e) => {
+                e.preventDefault();
+                if (isDrawing && hasDrawnSinceLastSave) {
+                    saveState();
+                }
+                isDrawing = false;
+            });
+
+            // Tool selection controls
+            document
+                .getElementById("pen-button")
+                .addEventListener("click", function () {
+                    currentTool = "pen";
+                    ctx.strokeStyle = defaultBrushColor;
+                    ctx.globalCompositeOperation = "source-over";
+
+                    // Update UI
+                    document
+                        .getElementById("pen-button")
+                        .classList.add("active");
+                    document
+                        .getElementById("eraser-button")
+                        .classList.remove("active");
+                });
+
+            document
+                .getElementById("eraser-button")
+                .addEventListener("click", function () {
+                    currentTool = "eraser";
+                    ctx.globalCompositeOperation = "destination-out";
+
+                    // Update UI
+                    document
+                        .getElementById("eraser-button")
+                        .classList.add("active");
+                    document
+                        .getElementById("pen-button")
+                        .classList.remove("active");
+                });
+
+            // Brush size controls
+            const brushSizeButtons =
+                document.querySelectorAll(".brush-size-btn");
+            brushSizeButtons.forEach((button) => {
+                button.addEventListener("click", function () {
+                    // Update line width
+                    ctx.lineWidth = parseInt(this.getAttribute("data-size"));
+
+                    // Update UI
+                    brushSizeButtons.forEach((btn) =>
+                        btn.classList.remove("active")
+                    );
+                    this.classList.add("active");
+                });
+            });
+
+            // Button controls
+            document
+                .getElementById("undo-button")
+                .addEventListener("click", () => {
+                    if (currentStep > 0) {
+                        restoreState(currentStep - 1);
+                    }
+                });
+
+            document
+                .getElementById("clear-button")
+                .addEventListener("click", clearCanvas);
+
+            // Handle prompt submission
+            const promptInput = document.getElementById("prompt-input");
+            const submitButton = document.getElementById("submit-button");
+
+            submitButton.addEventListener("click", () => {
+                const prompt = promptInput.value.trim();
+                if (prompt) {
+                    console.log("Prompt submitted:", prompt);
+                    // You can add functionality here to process the prompt
+                    alert(`Prompt received: ${prompt}`);
+                    promptInput.value = "";
+                }
+            });
+
+            // Allow submitting with Enter key
+            promptInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                    submitButton.click();
+                }
+            });
+        </script>
+    </body>
+</html>

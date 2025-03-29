@@ -7,7 +7,9 @@
     "keywords": [],
     "scripts": {
         "build": "npm run webpack-build",
+        "start": "npm run webpack-start-dev-server",
         "webpack-build": "webpack --config webpack.config.js",
+        "webpack-start-dev-server": "webpack serve --mode development",
         "clean": "rm -rf dist",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
@@ -44,7 +46,8 @@
         "url": "^0.11.4",
         "util": "^0.12.5",
         "webpack": "^5.97.1",
-        "webpack-cli": "^6.0.1"
+        "webpack-cli": "^6.0.1",
+        "webpack-dev-server": "^5.2.1"
     },
     "repository": {
         "type": "git",
