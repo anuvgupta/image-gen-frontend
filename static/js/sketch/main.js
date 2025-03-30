@@ -70,11 +70,27 @@ function saveToLocalStorage() {
 function resizeCanvas() {
     canvas.width = canvasContainer.clientWidth;
     canvas.height = canvasContainer.clientHeight;
+    console.log(
+        `Canvas resized to: ${canvas.width}x${canvas.height}, container: ${canvasContainer.clientWidth}x${canvasContainer.clientHeight}`
+    );
     redrawCanvas();
 }
-
 // Initial canvas sizing and set initial drawing properties
-resizeCanvas();
+function initialResizeCanvas() {
+    window.addEventListener("load", function () {
+        // First resize immediately after load
+        resizeCanvas();
+
+        // Then do another resize after a short delay to ensure Safari has completed layout
+        setTimeout(function () {
+            resizeCanvas();
+        }, 100);
+    });
+
+    // Keep the existing resize event handler
+    window.addEventListener("resize", resizeCanvas);
+}
+initialResizeCanvas();
 
 // Drawing settings - set these before loading
 ctx.lineJoin = "round";
