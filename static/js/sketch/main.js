@@ -68,10 +68,28 @@ function saveToLocalStorage() {
 
 // Resize canvas to fill container
 function resizeCanvas() {
+    // Save current brush size and tool
+    const currentLineWidth = ctx.lineWidth;
+    const currentStrokeStyle = ctx.strokeStyle;
+
     canvas.width = canvasContainer.clientWidth;
     canvas.height = canvasContainer.clientHeight;
+
+    // Restore drawing settings after canvas resize
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.lineWidth = currentLineWidth;
+    ctx.strokeStyle = currentStrokeStyle;
+
+    // Set composite operation based on current tool
+    if (currentTool === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+    } else {
+        ctx.globalCompositeOperation = "source-over";
+    }
+
     console.log(
-        `Canvas resized to: ${canvas.width}x${canvas.height}, container: ${canvasContainer.clientWidth}x${canvasContainer.clientHeight}`
+        `Canvas resized to: ${canvas.width}x${canvas.height}, brush size: ${ctx.lineWidth}`
     );
     redrawCanvas();
 }
@@ -87,7 +105,7 @@ function initialResizeCanvas() {
         }, 100);
     });
 
-    // Keep the existing resize event handler
+    // Resize event handler
     window.addEventListener("resize", resizeCanvas);
 }
 initialResizeCanvas();
@@ -98,9 +116,6 @@ ctx.lineCap = "round";
 ctx.lineWidth = 5;
 ctx.strokeStyle = "#000";
 
-// Resize canvas when window size changes
-window.addEventListener("resize", resizeCanvas);
-
 // Save the current state of the canvas
 function saveState() {
     // Limit history size to prevent memory issues
@@ -109,7 +124,13 @@ function saveState() {
     }
 
     currentStep++;
-    history.push(canvas.toDataURL());
+
+    // Save the image data along with current canvas dimensions
+    history.push({
+        imageData: canvas.toDataURL(),
+        width: canvas.width,
+        height: canvas.height,
+    });
 
     // Save to localStorage after updating history
     saveToLocalStorage();
@@ -124,13 +145,51 @@ function restoreState(step) {
 
     currentStep = step;
 
+    // Get the saved state
+    const savedState = history[currentStep];
+
+    // Handle both the new format (object) and old format (string)
+    const imageDataSrc =
+        typeof savedState === "object" ? savedState.imageData : savedState;
+    const originalWidth =
+        typeof savedState === "object" ? savedState.width : canvas.width;
+    const originalHeight =
+        typeof savedState === "object" ? savedState.height : canvas.height;
+
     const img = new Image();
     img.onload = function () {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Important: Reset the composite operation to default before drawing
         ctx.globalCompositeOperation = "source-over";
-        ctx.drawImage(img, 0, 0);
+
+        // Draw the image scaled appropriately to the current canvas size
+        if (typeof savedState === "object") {
+            // No stretching needed if dimensions match
+            if (
+                originalWidth === canvas.width &&
+                originalHeight === canvas.height
+            ) {
+                ctx.drawImage(img, 0, 0);
+            } else {
+                // Preserve aspect ratio when scaling
+                const scale = Math.min(
+                    canvas.width / originalWidth,
+                    canvas.height / originalHeight
+                );
+
+                // Calculate centered position
+                const scaledWidth = originalWidth * scale;
+                const scaledHeight = originalHeight * scale;
+                const posX = (canvas.width - scaledWidth) / 2;
+                const posY = (canvas.height - scaledHeight) / 2;
+
+                ctx.drawImage(img, posX, posY, scaledWidth, scaledHeight);
+            }
+        } else {
+            // Legacy format - just draw as is
+            ctx.drawImage(img, 0, 0);
+        }
 
         // Reset to current tool setting after redrawing
         if (currentTool === "eraser") {
@@ -142,7 +201,7 @@ function restoreState(step) {
         // Save to localStorage after restoring state
         saveToLocalStorage();
     };
-    img.src = history[currentStep];
+    img.src = imageDataSrc;
 
     // Enable/disable undo button based on history
     document.getElementById("undo-button").disabled = currentStep <= 0;
