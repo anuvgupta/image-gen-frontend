@@ -5,6 +5,7 @@ import {
     generateImage,
     getJobStatus,
 } from "./api-client.js";
+import * as utils from "./utils.js";
 import * as config from "./config.js";
 import * as themeSystem from "./theme/system.js";
 
@@ -69,44 +70,10 @@ const hideError = () => {
     elements.errorMessage.style.display = "none";
 };
 
-const isBase64 = (imageData) => {
-    return (
-        imageData.startsWith("iVBORw0") || imageData.startsWith("data:image")
-    );
-};
-
-const getBase64Image = (imageDataAsBase64) => {
-    return `data:image/png;base64,${imageDataAsBase64.replace(
-        /^data:image\/\w+;base64,/,
-        ""
-    )}`;
-};
-
-const getImageUrl = (imageDataAsUrl) => {
-    try {
-        if (imageDataAsUrl.startsWith("/output/")) {
-            return imageDataAsUrl;
-        }
-        if (imageDataAsUrl.startsWith("output/")) {
-            return `/${imageDataAsUrl}`;
-        }
-        const urlObj = new URL(imageDataAsUrl);
-        const path = urlObj.pathname;
-        const outputIndex = path.indexOf("/output/");
-        if (outputIndex !== -1) {
-            return path.slice(outputIndex);
-        }
-        throw new Error("URL does not contain expected /output/ path");
-    } catch (error) {
-        console.error(error);
-        throw new Error(`Invalid URL or unexpected format: ${error.message}`);
-    }
-};
-
 const displayImage = (imageData) => {
-    elements.generatedImage.src = isBase64(imageData)
-        ? getBase64Image(imageData)
-        : getImageUrl(imageData);
+    elements.generatedImage.src = utils.isBase64(imageData)
+        ? utils.getBase64Image(imageData)
+        : utils.getImageUrl(imageData);
     elements.generatedImage.style.display = "block";
     elements.imagePlaceholder.style.display = "none";
     elements.loadingSpinner.style.display = "none";
@@ -192,30 +159,6 @@ const checkDirectImageAccess = async (jobId) => {
     }
 };
 
-const is404Error = (error) => {
-    return error.httpStatus === 404 || error.httpStatus === "404";
-};
-
-const isFirewallThrottlingError = (error) => {
-    // console.error(error);
-
-    if (error.httpStatus === 403 && error.errorType === "ForbiddenException") {
-        return true;
-    }
-
-    // Check for Failed to fetch errors (which could be from preflight failure)
-    if (error instanceof TypeError && error.message === "Failed to fetch") {
-        return true;
-    }
-
-    // Check for explicit CORS preflight errors
-    if (error.message?.includes("CORS error")) {
-        return true;
-    }
-
-    return false;
-};
-
 const startPolling = (jobId) => {
     currentJobId = jobId;
     if (pollingInterval) clearInterval(pollingInterval);
@@ -259,9 +202,9 @@ const pollStatus = async (jobId) => {
         let errorMessage = config.DEFAULT_ERROR_MESSAGE;
 
         // Check specifically for WAF throttling
-        if (isFirewallThrottlingError(error)) {
+        if (utils.isFirewallThrottlingError(error)) {
             errorMessage = config.FIREWALL_THROTTLING_ERROR_MESSAGE;
-        } else if (is404Error(error)) {
+        } else if (utils.is404Error(error)) {
             if (config.CHECK_BUCKET_FIRST) {
                 errorMessage = "Image not found! Images expire after a day.";
             } else {
@@ -311,7 +254,7 @@ const generateImageHandler = async () => {
         showPlaceholder();
         let errorMessage = config.DEFAULT_ERROR_MESSAGE;
         // Check specifically for WAF throttling
-        if (isFirewallThrottlingError(error)) {
+        if (utils.isFirewallThrottlingError(error)) {
             errorMessage = config.FIREWALL_THROTTLING_ERROR_MESSAGE;
         }
         showError(errorMessage);

@@ -22,6 +22,7 @@ export const WORKFLOWS = [
         name: "SDXL Lightning 6-step Juggernaut",
     },
 ];
+const SCRIBBLE_WORKFLOW = "sdxl_lightning_6step_juggernaut_xi_scribble";
 export const ASPECT_RATIOS = [
     {
         param: "1_1",

@@ -1,16 +1,62 @@
-// Canvas setup
-const canvas = document.getElementById("drawing-canvas");
-const ctx = canvas.getContext("2d");
-const canvasContainer = document.getElementById("canvas-container");
+// sketch/main.js
 
-// Canvas history for undo functionality
-let history = [];
-let currentStep = -1;
+import {
+    initializeApiClient,
+    generateImage,
+    getJobStatus,
+} from "../api-client.js";
+import * as utils from "../utils.js";
+import * as config from "../config.js";
 
+/* constants */
 // LocalStorage keys
 const STORAGE_KEY_HISTORY = "sketch-app-history";
 const STORAGE_KEY_CURRENT_STEP = "sketch-app-current-step";
 const STORAGE_KEY_LAST_SAVED = "sketch-app-last-saved";
+const defaultBrushColor = "#000";
+
+/* memory */
+let currentJobId = null;
+let pollingInterval = null;
+// Canvas history for undo functionality
+let history = [];
+let currentStep = -1;
+// Drawing state variables
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+let hasDrawnSinceLastSave = false;
+let currentTool = "pen"; // pen or eraser
+// UI elements
+let canvas,
+    canvasContainer,
+    ctx,
+    controlsContainer,
+    resetStorageButton,
+    brushSizeButtons,
+    resetToolGroup,
+    promptInput,
+    submitButton,
+    statusIndicator;
+
+/* app methods */
+const initializeApi = async () => {
+    initializeApiClient(
+        config.getCognitoIdentityPoolId(),
+        config.getAwsRegion(),
+        config.getBaseUrl()
+    ).catch(console.error);
+};
+
+// Function to show a status message temporarily
+function showStatus(message, duration = 2000) {
+    statusIndicator.textContent = message;
+    statusIndicator.style.opacity = "1";
+
+    setTimeout(() => {
+        statusIndicator.style.opacity = "0";
+    }, duration);
+}
 
 // Load saved state from localStorage if available
 function loadFromLocalStorage() {
@@ -51,7 +97,7 @@ function loadFromLocalStorage() {
 }
 
 // Save current state to localStorage
-function saveToLocalStorage() {
+function saveToLocalStorage(showStatusNotification) {
     try {
         localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
         localStorage.setItem(STORAGE_KEY_CURRENT_STEP, currentStep.toString());
@@ -59,6 +105,9 @@ function saveToLocalStorage() {
         console.log(
             `Saved sketch to localStorage with ${history.length} steps, currently at step ${currentStep}`
         );
+        if (showStatusNotification) {
+            showStatus("Sketch saved");
+        }
     } catch (error) {
         console.error("Error saving to localStorage:", error);
         // If storage quota is exceeded, we could implement a cleanup strategy here
@@ -67,7 +116,7 @@ function saveToLocalStorage() {
 }
 
 // Resize canvas to fill container
-function resizeCanvas() {
+function resizeCanvas(initial) {
     // Save current brush size and tool
     const currentLineWidth = ctx.lineWidth;
     const currentStrokeStyle = ctx.strokeStyle;
@@ -91,33 +140,27 @@ function resizeCanvas() {
     console.log(
         `Canvas resized to: ${canvas.width}x${canvas.height}, brush size: ${ctx.lineWidth}`
     );
-    redrawCanvas();
+    redrawCanvas(initial);
 }
+
 // Initial canvas sizing and set initial drawing properties
 function initialResizeCanvas() {
-    window.addEventListener("load", function () {
-        // First resize immediately after load
-        resizeCanvas();
+    // First resize immediately after load
+    resizeCanvas(true);
 
-        // Then do another resize after a short delay to ensure Safari has completed layout
-        setTimeout(function () {
-            resizeCanvas();
-        }, 100);
-    });
+    // Then do another resize after a short delay to ensure Safari has completed layout
+    setTimeout(function () {
+        resizeCanvas(true);
+    }, 100);
 
     // Resize event handler
-    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("resize", (_) => {
+        resizeCanvas(false);
+    });
 }
-initialResizeCanvas();
-
-// Drawing settings - set these before loading
-ctx.lineJoin = "round";
-ctx.lineCap = "round";
-ctx.lineWidth = 5;
-ctx.strokeStyle = "#000";
 
 // Save the current state of the canvas
-function saveState() {
+function saveState(initial) {
     // Limit history size to prevent memory issues
     if (currentStep < history.length - 1) {
         history.splice(currentStep + 1);
@@ -133,14 +176,14 @@ function saveState() {
     });
 
     // Save to localStorage after updating history
-    saveToLocalStorage();
+    saveToLocalStorage(!initial);
 
     // Enable/disable undo button based on history
     document.getElementById("undo-button").disabled = currentStep <= 0;
 }
 
 // Restore canvas to a previous state
-function restoreState(step) {
+function restoreState(step, initial) {
     if (step < 0 || step >= history.length) return;
 
     currentStep = step;
@@ -199,7 +242,7 @@ function restoreState(step) {
         }
 
         // Save to localStorage after restoring state
-        saveToLocalStorage();
+        saveToLocalStorage(!initial);
     };
     img.src = imageDataSrc;
 
@@ -208,9 +251,9 @@ function restoreState(step) {
 }
 
 // Redraw the canvas from current state
-function redrawCanvas() {
+function redrawCanvas(initial) {
     if (currentStep >= 0) {
-        restoreState(currentStep);
+        restoreState(currentStep, initial);
     }
 }
 
@@ -226,208 +269,219 @@ function clearCanvas() {
     // Restore the composite operation
     ctx.globalCompositeOperation = currentCompositeOperation;
 
-    saveState();
+    saveState(false);
 }
 
-// Try to load existing sketch, or initialize with a blank state
-if (!loadFromLocalStorage()) {
-    saveState(); // Initialize with a blank state if nothing to load
-} else {
-    // If we loaded history successfully, we need to restore the canvas
-    // using the current step from history
-    const img = new Image();
-    img.onload = function () {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.globalCompositeOperation = "source-over";
-        ctx.drawImage(img, 0, 0);
+function initializeCanvas() {
+    // Drawing settings - set these before loading
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#000";
 
-        // Reset to current tool setting after redrawing
-        if (currentTool === "eraser") {
-            ctx.globalCompositeOperation = "destination-out";
+    // Try to load existing sketch, or initialize with a blank state
+    if (!loadFromLocalStorage()) {
+        saveState(true); // Initialize with a blank state if nothing to load
+    } else {
+        // If we loaded history successfully, we need to restore the canvas
+        // using the current step from history
+        const img = new Image();
+        img.onload = function () {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = "source-over";
+            ctx.drawImage(img, 0, 0);
+
+            // Reset to current tool setting after redrawing
+            if (currentTool === "eraser") {
+                ctx.globalCompositeOperation = "destination-out";
+            }
+
+            // Update the undo button state
+            document.getElementById("undo-button").disabled = currentStep <= 0;
+        };
+        img.src = history[currentStep];
+    }
+
+    // Start drawing on mouse down
+    canvas.addEventListener("mousedown", (e) => {
+        isDrawing = true;
+        hasDrawnSinceLastSave = false;
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+    });
+
+    // Draw on mouse move if drawing is active
+    canvas.addEventListener("mousemove", (e) => {
+        if (!isDrawing) return;
+
+        // Calculate the current mouse position
+        const currentX = e.offsetX;
+        const currentY = e.offsetY;
+
+        // Use quadratic curves for smoother lines
+        ctx.beginPath();
+
+        // If this is the start of a new stroke, just move to the point
+        if (!hasDrawnSinceLastSave) {
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+        } else {
+            // For continuing strokes, use quadratic curves for smoother lines
+            // Calculate a midpoint between the last point and current point
+            const midX = (lastX + currentX) / 2;
+            const midY = (lastY + currentY) / 2;
+
+            // Use the midpoint as the control point for a quadratic curve
+            ctx.moveTo(lastX, lastY);
+            ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+            ctx.lineTo(currentX, currentY);
         }
 
-        // Update the undo button state
-        document.getElementById("undo-button").disabled = currentStep <= 0;
-    };
-    img.src = history[currentStep];
+        ctx.stroke();
+
+        // Update the last position for the next move
+        [lastX, lastY] = [currentX, currentY];
+        hasDrawnSinceLastSave = true;
+    });
+
+    // Stop drawing when mouse is released or leaves canvas
+    canvas.addEventListener("mouseup", () => {
+        if (isDrawing && hasDrawnSinceLastSave) {
+            saveState(false);
+        }
+        isDrawing = false;
+    });
+
+    canvas.addEventListener("mouseout", () => {
+        if (isDrawing && hasDrawnSinceLastSave) {
+            saveState(false);
+        }
+        isDrawing = false;
+    });
+
+    // Touch support for mobile devices
+    canvas.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left;
+        const touchY = touch.clientY - rect.top;
+
+        isDrawing = true;
+        hasDrawnSinceLastSave = false;
+        [lastX, lastY] = [touchX, touchY];
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        if (!isDrawing) return;
+
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left;
+        const touchY = touch.clientY - rect.top;
+
+        // Use quadratic curves for smoother lines
+        ctx.beginPath();
+
+        // If this is the start of a new stroke, just move to the point
+        if (!hasDrawnSinceLastSave) {
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(touchX, touchY);
+        } else {
+            // For continuing strokes, use quadratic curves for smoother lines
+            const midX = (lastX + touchX) / 2;
+            const midY = (lastY + touchY) / 2;
+
+            ctx.moveTo(lastX, lastY);
+            ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+            ctx.lineTo(touchX, touchY);
+        }
+
+        ctx.stroke();
+
+        [lastX, lastY] = [touchX, touchY];
+        hasDrawnSinceLastSave = true;
+    });
+
+    canvas.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        if (isDrawing && hasDrawnSinceLastSave) {
+            saveState(false);
+        }
+        isDrawing = false;
+    });
 }
 
-// Drawing state variables
+function initializeUI() {
+    canvas = document.getElementById("drawing-canvas");
+    canvasContainer = document.getElementById("canvas-container");
+    ctx = canvas.getContext("2d");
+    controlsContainer = document.getElementById("canvas-controls");
+    resetStorageButton = document.createElement("button");
+    brushSizeButtons = document.querySelectorAll(".brush-size-btn");
+    resetToolGroup = document.createElement("div");
+    promptInput = document.getElementById("prompt-input");
+    submitButton = document.getElementById("submit-button");
+    statusIndicator = document.createElement("div");
 
-// Drawing state
-let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
-let hasDrawnSinceLastSave = false;
-let currentTool = "pen"; // pen or eraser
-const defaultBrushColor = "#000";
+    // Tool selection controls
+    document
+        .getElementById("pen-button")
+        .addEventListener("click", function () {
+            currentTool = "pen";
+            ctx.strokeStyle = defaultBrushColor;
+            ctx.globalCompositeOperation = "source-over";
 
-// Start drawing on mouse down
-canvas.addEventListener("mousedown", (e) => {
-    isDrawing = true;
-    hasDrawnSinceLastSave = false;
-    [lastX, lastY] = [e.offsetX, e.offsetY];
-});
+            // Update UI
+            document.getElementById("pen-button").classList.add("active");
+            document.getElementById("eraser-button").classList.remove("active");
+        });
 
-// Draw on mouse move if drawing is active
-canvas.addEventListener("mousemove", (e) => {
-    if (!isDrawing) return;
+    document
+        .getElementById("eraser-button")
+        .addEventListener("click", function () {
+            currentTool = "eraser";
+            ctx.globalCompositeOperation = "destination-out";
 
-    // Calculate the current mouse position
-    const currentX = e.offsetX;
-    const currentY = e.offsetY;
+            // Update UI
+            document.getElementById("eraser-button").classList.add("active");
+            document.getElementById("pen-button").classList.remove("active");
+        });
 
-    // Use quadratic curves for smoother lines
-    ctx.beginPath();
+    // Brush size controls
+    brushSizeButtons.forEach((button) => {
+        button.addEventListener("click", function () {
+            // Update line width
+            ctx.lineWidth = parseInt(this.getAttribute("data-size"));
 
-    // If this is the start of a new stroke, just move to the point
-    if (!hasDrawnSinceLastSave) {
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(currentX, currentY);
-    } else {
-        // For continuing strokes, use quadratic curves for smoother lines
-        // Calculate a midpoint between the last point and current point
-        const midX = (lastX + currentX) / 2;
-        const midY = (lastY + currentY) / 2;
-
-        // Use the midpoint as the control point for a quadratic curve
-        ctx.moveTo(lastX, lastY);
-        ctx.quadraticCurveTo(lastX, lastY, midX, midY);
-        ctx.lineTo(currentX, currentY);
-    }
-
-    ctx.stroke();
-
-    // Update the last position for the next move
-    [lastX, lastY] = [currentX, currentY];
-    hasDrawnSinceLastSave = true;
-});
-
-// Stop drawing when mouse is released or leaves canvas
-canvas.addEventListener("mouseup", () => {
-    if (isDrawing && hasDrawnSinceLastSave) {
-        saveState();
-    }
-    isDrawing = false;
-});
-
-canvas.addEventListener("mouseout", () => {
-    if (isDrawing && hasDrawnSinceLastSave) {
-        saveState();
-    }
-    isDrawing = false;
-});
-
-// Touch support for mobile devices
-canvas.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const touchX = touch.clientX - rect.left;
-    const touchY = touch.clientY - rect.top;
-
-    isDrawing = true;
-    hasDrawnSinceLastSave = false;
-    [lastX, lastY] = [touchX, touchY];
-});
-
-canvas.addEventListener("touchmove", (e) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const touchX = touch.clientX - rect.left;
-    const touchY = touch.clientY - rect.top;
-
-    // Use quadratic curves for smoother lines
-    ctx.beginPath();
-
-    // If this is the start of a new stroke, just move to the point
-    if (!hasDrawnSinceLastSave) {
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(touchX, touchY);
-    } else {
-        // For continuing strokes, use quadratic curves for smoother lines
-        const midX = (lastX + touchX) / 2;
-        const midY = (lastY + touchY) / 2;
-
-        ctx.moveTo(lastX, lastY);
-        ctx.quadraticCurveTo(lastX, lastY, midX, midY);
-        ctx.lineTo(touchX, touchY);
-    }
-
-    ctx.stroke();
-
-    [lastX, lastY] = [touchX, touchY];
-    hasDrawnSinceLastSave = true;
-});
-
-canvas.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    if (isDrawing && hasDrawnSinceLastSave) {
-        saveState();
-    }
-    isDrawing = false;
-});
-
-// Tool selection controls
-document.getElementById("pen-button").addEventListener("click", function () {
-    currentTool = "pen";
-    ctx.strokeStyle = defaultBrushColor;
-    ctx.globalCompositeOperation = "source-over";
-
-    // Update UI
-    document.getElementById("pen-button").classList.add("active");
-    document.getElementById("eraser-button").classList.remove("active");
-});
-
-document.getElementById("eraser-button").addEventListener("click", function () {
-    currentTool = "eraser";
-    ctx.globalCompositeOperation = "destination-out";
-
-    // Update UI
-    document.getElementById("eraser-button").classList.add("active");
-    document.getElementById("pen-button").classList.remove("active");
-});
-
-// Brush size controls
-const brushSizeButtons = document.querySelectorAll(".brush-size-btn");
-brushSizeButtons.forEach((button) => {
-    button.addEventListener("click", function () {
-        // Update line width
-        ctx.lineWidth = parseInt(this.getAttribute("data-size"));
-
-        // Update UI
-        brushSizeButtons.forEach((btn) => btn.classList.remove("active"));
-        this.classList.add("active");
+            // Update UI
+            brushSizeButtons.forEach((btn) => btn.classList.remove("active"));
+            this.classList.add("active");
+        });
     });
-});
 
-// Button controls
-document.getElementById("undo-button").addEventListener("click", () => {
-    if (currentStep > 0) {
-        restoreState(currentStep - 1);
-    }
-});
+    // Button controls
+    document.getElementById("undo-button").addEventListener("click", () => {
+        if (currentStep > 0) {
+            restoreState(currentStep - 1, false);
+        }
+    });
 
-document.getElementById("clear-button").addEventListener("click", () => {
-    if (
-        confirm(
-            "Are you sure you want to clear the canvas?" // + " This cannot be undone."
-        )
-    ) {
-        clearCanvas();
-        // After clearing, we should update localStorage
-        saveToLocalStorage();
-    }
-});
+    document.getElementById("clear-button").addEventListener("click", () => {
+        if (
+            confirm(
+                "Are you sure you want to clear the canvas?" // + " This cannot be undone."
+            )
+        ) {
+            clearCanvas();
+            // After clearing, we should update localStorage
+            saveToLocalStorage(true);
+        }
+    });
 
-// Add a button to delete saved data
-const controlsContainer = document.getElementById("canvas-controls");
-const resetStorageButton = document.createElement("button");
-resetStorageButton.id = "reset-storage-button";
-resetStorageButton.innerHTML = `
+    // Add a button to delete saved data
+    resetStorageButton.id = "reset-storage-button";
+    resetStorageButton.innerHTML = `
     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
         <line x1="18" y1="9" x2="12" y2="15"></line>
@@ -436,90 +490,86 @@ resetStorageButton.innerHTML = `
    Forget Sketch
 `;
 
-// Create a new tool group for the reset button
-const resetToolGroup = document.createElement("div");
-resetToolGroup.className = "tool-group";
-resetToolGroup.appendChild(resetStorageButton);
-controlsContainer.appendChild(resetToolGroup);
+    // Create a new tool group for the reset button
+    resetToolGroup.className = "tool-group";
+    resetToolGroup.appendChild(resetStorageButton);
+    controlsContainer.appendChild(resetToolGroup);
 
-// Add event listener for the reset storage button
-resetStorageButton.addEventListener("click", () => {
-    if (
-        confirm(
-            "This will forget your sketch and your undo history. Are you sure?"
-        )
-    ) {
-        localStorage.removeItem(STORAGE_KEY_HISTORY);
-        localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
-        localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
+    // Add event listener for the reset storage button
+    resetStorageButton.addEventListener("click", () => {
+        if (
+            confirm(
+                "This will forget your sketch and your undo history. Are you sure?"
+            )
+        ) {
+            localStorage.removeItem(STORAGE_KEY_HISTORY);
+            localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
+            localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
 
-        // Reset the canvas and history
-        history = [];
-        currentStep = -1;
-        clearCanvas();
-        saveState(); // Initialize with a blank state
+            // Reset the canvas and history
+            clearCanvas();
+            history = [];
+            currentStep = -1;
+            saveState(false); // Initialize with a blank state
+            // document.getElementById("undo-button").disabled = true;
 
-        alert("Sketch & history have been forgotten.");
-    }
-});
+            alert("Sketch & history have been forgotten.");
+        }
+    });
 
-// Handle prompt submission
-const promptInput = document.getElementById("prompt-input");
-const submitButton = document.getElementById("submit-button");
+    // Handle prompt submission
+    submitButton.addEventListener("click", () => {
+        const prompt = promptInput.value.trim();
+        if (prompt) {
+            console.log("Prompt submitted:", prompt);
+            // You can add functionality here to process the prompt
+            alert(`Prompt received: ${prompt}`);
+            promptInput.value = "";
+        }
+    });
 
-submitButton.addEventListener("click", () => {
-    const prompt = promptInput.value.trim();
-    if (prompt) {
-        console.log("Prompt submitted:", prompt);
-        // You can add functionality here to process the prompt
-        alert(`Prompt received: ${prompt}`);
-        promptInput.value = "";
-    }
-});
+    // Allow submitting with Enter key
+    promptInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            submitButton.click();
+        }
+    });
 
-// Allow submitting with Enter key
-promptInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-        submitButton.click();
-    }
-});
-
-// Create status indicator
-const statusIndicator = document.createElement("div");
-statusIndicator.id = "storage-status";
-statusIndicator.style.position = "absolute";
-statusIndicator.style.bottom = "10px";
-statusIndicator.style.left = "10px";
-statusIndicator.style.backgroundColor = "rgba(0,0,0,0.5)";
-statusIndicator.style.color = "white";
-statusIndicator.style.padding = "5px 10px";
-statusIndicator.style.borderRadius = "4px";
-statusIndicator.style.fontSize = "12px";
-statusIndicator.style.opacity = "0";
-statusIndicator.style.transition = "opacity 0.3s";
-canvasContainer.appendChild(statusIndicator);
-
-// Function to show a status message temporarily
-function showStatus(message, duration = 2000) {
-    statusIndicator.textContent = message;
-    statusIndicator.style.opacity = "1";
-
-    setTimeout(() => {
-        statusIndicator.style.opacity = "0";
-    }, duration);
+    // Create status indicator
+    statusIndicator.id = "storage-status";
+    statusIndicator.style.position = "absolute";
+    statusIndicator.style.bottom = "10px";
+    statusIndicator.style.left = "10px";
+    statusIndicator.style.backgroundColor = "rgba(0,0,0,0.5)";
+    statusIndicator.style.color = "white";
+    statusIndicator.style.padding = "5px 10px";
+    statusIndicator.style.borderRadius = "4px";
+    statusIndicator.style.fontSize = "12px";
+    statusIndicator.style.opacity = "0";
+    statusIndicator.style.transition = "opacity 0.3s";
+    canvasContainer.appendChild(statusIndicator);
 }
 
-// Override saveToLocalStorage to show status
-const originalSaveToLocalStorage = saveToLocalStorage;
-saveToLocalStorage = function () {
-    originalSaveToLocalStorage();
-    showStatus("Sketch saved");
+function displayLastSavedTime() {
+    // Display last saved time if available
+    const lastSaved = localStorage.getItem(STORAGE_KEY_LAST_SAVED);
+    if (lastSaved) {
+        const date = new Date(lastSaved);
+        const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+        showStatus(`Last saved: ${formattedDate}`, 3000);
+    }
+}
+
+// Main method
+const main = () => {
+    initializeUI();
+    initializeCanvas();
+    initialResizeCanvas();
+    // displayLastSavedTime();
+    initializeApi();
 };
 
-// Display last saved time if available
-const lastSaved = localStorage.getItem(STORAGE_KEY_LAST_SAVED);
-if (lastSaved) {
-    const date = new Date(lastSaved);
-    const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-    showStatus(`Last saved: ${formattedDate}`, 3000);
-}
+// Entry point
+window.addEventListener("load", function () {
+    main();
+});
