@@ -2,8 +2,11 @@
 
 import {
     initializeApiClient,
-    generateImage,
+    generateImageWithInput,
     getJobStatus,
+    getUploadLink,
+    getCognitoIdentityId,
+    uploadImageToS3,
 } from "../api-client.js";
 import * as utils from "../utils.js";
 import * as config from "../config.js";
@@ -14,6 +17,7 @@ const STORAGE_KEY_HISTORY = "sketch-app-history";
 const STORAGE_KEY_CURRENT_STEP = "sketch-app-current-step";
 const STORAGE_KEY_LAST_SAVED = "sketch-app-last-saved";
 const defaultBrushColor = "#000";
+const isProd = config.isProd();
 
 /* memory */
 let currentJobId = null;
@@ -32,9 +36,7 @@ let canvas,
     canvasContainer,
     ctx,
     controlsContainer,
-    resetStorageButton,
     brushSizeButtons,
-    resetToolGroup,
     promptInput,
     submitButton,
     statusIndicator;
@@ -48,15 +50,7 @@ const initializeApi = async () => {
     ).catch(console.error);
 };
 
-// Function to show a status message temporarily
-function showStatus(message, duration = 2000) {
-    statusIndicator.textContent = message;
-    statusIndicator.style.opacity = "1";
-
-    setTimeout(() => {
-        statusIndicator.style.opacity = "0";
-    }, duration);
-}
+/* storage methods */
 
 // Load saved state from localStorage if available
 function loadFromLocalStorage() {
@@ -112,6 +106,130 @@ function saveToLocalStorage(showStatusNotification) {
         console.error("Error saving to localStorage:", error);
         // If storage quota is exceeded, we could implement a cleanup strategy here
         // For example, remove older history states or compress the data
+    }
+}
+
+/* ui methods */
+
+// Function to show a status message temporarily
+let statusTimeout = null;
+function showStatus(message, duration = 2000) {
+    statusIndicator.textContent = message;
+    statusIndicator.style.opacity = "1";
+
+    if (statusTimeout) {
+        clearTimeout(statusTimeout);
+    }
+
+    statusTimeout = setTimeout(() => {
+        statusIndicator.style.opacity = "0";
+    }, duration);
+}
+
+// Function to handle the submit button click
+function handleSubmitButtonClick() {
+    const timestampMs = Date.now();
+
+    // Get prompt
+    let prompt = promptInput.value.trim();
+    if (!prompt) {
+        showStatus("Please add a description!", 60000);
+        return;
+    }
+
+    // Show status to user
+    showStatus("Processing your sketch...");
+    console.log('Processing sketch with prompt "' + prompt + '"');
+
+    // Get the image as PNG from canvas
+    const imageData = getCanvasImageAsPNG();
+    const imageType = "png";
+    const fileName = `sketch_user_${getCognitoIdentityId()}_time_${timestampMs}.${imageType}`;
+    const fileType = `image/${imageType}`;
+
+    // Get upload link from API
+    uploadImageToS3(imageData, fileName, fileType)
+        .then((result) => {
+            console.log(result);
+        })
+        // .then((response) => {
+        //     // Handle successful upload
+        //     showStatus("Sketch uploaded successfully!");
+
+        //     // TODO: Call image generation API with the uploaded image URL
+        //     // generateImageFromSketch(response.imageUrl);
+        // })
+        .catch((error) => {
+            console.error("Error in upload process:", error);
+            showStatus("Upload failed. Please try again.", 3000);
+        });
+}
+
+// Get inverted canvas image
+function getInvertedCanvas(sourceCanvas) {
+    // Create a temporary canvas for processing
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = sourceCanvas.width;
+    tempCanvas.height = sourceCanvas.height;
+    const tempCtx = tempCanvas.getContext("2d");
+
+    // Fill with white background
+    tempCtx.fillStyle = "white";
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // Draw the original canvas content onto the temp canvas
+    tempCtx.drawImage(sourceCanvas, 0, 0);
+
+    // Get the image data for inverting
+    const imageData = tempCtx.getImageData(
+        0,
+        0,
+        tempCanvas.width,
+        tempCanvas.height
+    );
+    const data = imageData.data;
+
+    // Invert the colors
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = 255 - data[i]; // Red
+        data[i + 1] = 255 - data[i + 1]; // Green
+        data[i + 2] = 255 - data[i + 2]; // Blue
+        // Alpha channel (data[i + 3]) remains unchanged
+    }
+
+    // Put the modified image data back
+    tempCtx.putImageData(imageData, 0, 0);
+
+    return tempCanvas;
+}
+
+// Function to get canvas image as PNG
+function getCanvasImageAsPNG() {
+    // Get the inverted canvas
+    const invertedCanvas = getInvertedCanvas(canvas);
+
+    // Get the PNG data URL from the inverted canvas
+    const dataUrl = invertedCanvas.toDataURL("image/png");
+
+    // Convert data URL to a Blob
+    const binaryString = atob(dataUrl.split(",")[1]);
+    const array = [];
+    for (let i = 0; i < binaryString.length; i++) {
+        array.push(binaryString.charCodeAt(i));
+    }
+
+    // Create a Blob from the binary data
+    const blob = new Blob([new Uint8Array(array)], { type: "image/png" });
+    return blob;
+}
+
+function displayLastSavedTime() {
+    // Display last saved time if available
+    const lastSaved = localStorage.getItem(STORAGE_KEY_LAST_SAVED);
+    if (lastSaved) {
+        const date = new Date(lastSaved);
+        const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+        showStatus(`Last saved: ${formattedDate}`, 3000);
     }
 }
 
@@ -417,9 +535,7 @@ function initializeUI() {
     canvasContainer = document.getElementById("canvas-container");
     ctx = canvas.getContext("2d");
     controlsContainer = document.getElementById("canvas-controls");
-    resetStorageButton = document.createElement("button");
     brushSizeButtons = document.querySelectorAll(".brush-size-btn");
-    resetToolGroup = document.createElement("div");
     promptInput = document.getElementById("prompt-input");
     submitButton = document.getElementById("submit-button");
     statusIndicator = document.createElement("div");
@@ -479,54 +595,31 @@ function initializeUI() {
         }
     });
 
-    // Add a button to delete saved data
-    resetStorageButton.id = "reset-storage-button";
-    resetStorageButton.innerHTML = `
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
-        <line x1="18" y1="9" x2="12" y2="15"></line>
-        <line x1="12" y1="9" x2="18" y2="15"></line>
-    </svg>
-   Forget Sketch
-`;
-
-    // Create a new tool group for the reset button
-    resetToolGroup.className = "tool-group";
-    resetToolGroup.appendChild(resetStorageButton);
-    controlsContainer.appendChild(resetToolGroup);
-
     // Add event listener for the reset storage button
-    resetStorageButton.addEventListener("click", () => {
-        if (
-            confirm(
-                "This will forget your sketch and your undo history. Are you sure?"
-            )
-        ) {
-            localStorage.removeItem(STORAGE_KEY_HISTORY);
-            localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
-            localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
+    document
+        .getElementById("reset-storage-button")
+        .addEventListener("click", () => {
+            if (
+                confirm(
+                    "This will forget your sketch and your undo history. Are you sure?"
+                )
+            ) {
+                localStorage.removeItem(STORAGE_KEY_HISTORY);
+                localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
+                localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
 
-            // Reset the canvas and history
-            clearCanvas();
-            history = [];
-            currentStep = -1;
-            saveState(false); // Initialize with a blank state
-            // document.getElementById("undo-button").disabled = true;
+                // Reset the canvas and history
+                clearCanvas();
+                history = [];
+                currentStep = -1;
+                saveState(false); // Initialize with a blank state
 
-            alert("Sketch & history have been forgotten.");
-        }
-    });
+                alert("Sketch & history have been forgotten.");
+            }
+        });
 
     // Handle prompt submission
-    submitButton.addEventListener("click", () => {
-        const prompt = promptInput.value.trim();
-        if (prompt) {
-            console.log("Prompt submitted:", prompt);
-            // You can add functionality here to process the prompt
-            alert(`Prompt received: ${prompt}`);
-            promptInput.value = "";
-        }
-    });
+    submitButton.addEventListener("click", handleSubmitButtonClick);
 
     // Allow submitting with Enter key
     promptInput.addEventListener("keypress", (e) => {
@@ -550,15 +643,7 @@ function initializeUI() {
     canvasContainer.appendChild(statusIndicator);
 }
 
-function displayLastSavedTime() {
-    // Display last saved time if available
-    const lastSaved = localStorage.getItem(STORAGE_KEY_LAST_SAVED);
-    if (lastSaved) {
-        const date = new Date(lastSaved);
-        const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-        showStatus(`Last saved: ${formattedDate}`, 3000);
-    }
-}
+/* init methods */
 
 // Main method
 const main = () => {

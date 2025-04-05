@@ -75,7 +75,9 @@ export const LOADING_PROGRESS_STATE = {
 /* smart constants */
 export const isProd = () => {
     const HOST_NAME = `${window.location.hostname}`;
-    return !HOST_NAME.includes("-dev");
+    return (
+        !HOST_NAME.includes("-dev") && window.location.hostname != "localhost"
+    );
 };
 export const getBaseUrl = () => {
     const BASE_DOMAIN_DEV = "images-api-dev.anuv.me";
