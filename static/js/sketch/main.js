@@ -94,6 +94,7 @@ function generateImageWithCanvasInput() {
         .then((response) => {
             console.log(response);
             const jobId = response.id;
+            updateUrlWithParams(jobId, prompt);
             startPolling(jobId);
 
             // Handle successful upload
@@ -111,6 +112,28 @@ function updateProgress(progress) {
         showStatus(progress.details);
     }
 }
+
+const checkDirectImageAccess = async (jobId) => {
+    const imageUrl = `/output/${jobId}.png`;
+    try {
+        const response = await fetch(imageUrl, {
+            method: "HEAD", // Use HEAD request to check existence without downloading
+        });
+
+        if (response.ok) {
+            // Image exists, display it with expiring message
+            displayImage(imageUrl);
+            updateProgress(config.EXPIRING_PROGRESS_STATE);
+            // setLoading(false); // Enable the generate button
+            clearInterval(pollingInterval); // Clear any existing polling
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+};
 
 const startPolling = (jobId) => {
     currentJobId = jobId;
@@ -164,13 +187,13 @@ const pollStatus = async (jobId) => {
             if (config.CHECK_BUCKET_FIRST) {
                 errorMessage = "Image not found! Images expire after a day.";
             } else {
-                // // If the SDK throws a 404 error, try direct image access
-                // const imageExists = await checkDirectImageAccess(jobId);
-                // if (!imageExists) {
-                //     errorMessage =
-                //         "Image not found! Images expire after a day.";
-                // }
-                console.log("404 - check direct image access");
+                // If the SDK throws a 404 error, try direct image access
+                console.log("404 - checking direct image access");
+                const imageExists = await checkDirectImageAccess(jobId);
+                if (!imageExists) {
+                    errorMessage =
+                        "Image not found! Images expire after a day.";
+                }
             }
         }
 
@@ -180,7 +203,7 @@ const pollStatus = async (jobId) => {
         // setLoading(false);
         // showPlaceholder();
         // showError(errorMessage);
-        // updateUrlWithParams(null);
+        updateUrlWithParams(null, null);
     }
 };
 
@@ -241,6 +264,78 @@ function saveToLocalStorage(showStatusNotification) {
         // If storage quota is exceeded, we could implement a cleanup strategy here
         // For example, remove older history states or compress the data
     }
+}
+
+function clearUrlParams() {
+    const url = new URL(window.location);
+    url.searchParams.delete("i");
+    url.searchParams.delete("p");
+    window.history.pushState({}, "", url);
+}
+
+const updateUrlWithParams = (jobId, prompt) => {
+    const url = new URL(window.location);
+    if (jobId) {
+        url.searchParams.set("i", jobId);
+    } else {
+        url.searchParams.delete("i");
+    }
+    if (prompt) {
+        url.searchParams.set("p", prompt);
+    } else if (!jobId) {
+        // Only remove prompt if we're also removing job ID
+        url.searchParams.delete("p");
+    }
+    window.history.pushState({}, "", url);
+};
+
+const loadParamsFromUrl = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    let jobId = urlParams.get("i");
+    let prompt = urlParams.get("p");
+
+    if (!prompt) {
+        prompt = getPromptFromHistory();
+    }
+    if (prompt) {
+        promptInput.value = decodeURIComponent(prompt);
+    }
+
+    if (!jobId) {
+        jobId = getJobIdFromHistory();
+    }
+    if (jobId) {
+        if (config.CHECK_BUCKET_FIRST) {
+            // Try to load image directly first
+            const imageExists = await checkDirectImageAccess(jobId);
+            if (!imageExists) {
+                // If direct image access fails, start polling
+                startPolling(jobId);
+            }
+        } else {
+            startPolling(jobId);
+        }
+    } else {
+        // showPlaceholder();
+    }
+};
+
+function getPromptFromHistory() {
+    if (currentStep < 0) {
+        return null;
+    }
+    const savedState = history[currentStep];
+    const prompt = typeof savedState === "object" ? savedState.prompt : null;
+    return prompt;
+}
+
+function getJobIdFromHistory() {
+    if (currentStep < 0) {
+        return null;
+    }
+    const savedState = history[currentStep];
+    const jobId = typeof savedState === "object" ? savedState.jobId : null;
+    return jobId;
 }
 
 /* ui methods */
@@ -416,6 +511,27 @@ function saveState(showStatusNotification) {
     document.getElementById("undo-button").disabled = currentStep <= 0;
 }
 
+function forgetState() {
+    localStorage.removeItem(STORAGE_KEY_HISTORY);
+    localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
+    localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
+
+    // Reset the canvas and history
+    promptInput.value = "";
+    generatedImage.style.display = "none";
+    resultPlaceholder.style.display = "block";
+    setTimeout((_) => {
+        generatedImage.src = "";
+    }, 300);
+    clearUrlParams();
+    clearCanvas(false);
+    history = [];
+    currentStep = -1;
+    saveState(false); // Initialize with a blank state
+
+    alert("Sketch & history have been forgotten.");
+}
+
 // Restore canvas to a previous state
 function restoreState(step, showStatusNotification) {
     if (step < 0 || step >= history.length) return;
@@ -437,9 +553,9 @@ function restoreState(step, showStatusNotification) {
     const jobId = typeof savedState === "object" ? savedState.jobId : null;
     const prompt = typeof savedState === "object" ? savedState.prompt : null;
 
-    if (prompt) {
-        promptInput.value = `${prompt}`;
-    }
+    // if (prompt) {
+    //     promptInput.value = `${prompt}`;
+    // }
 
     const img = new Image();
     img.onload = function () {
@@ -500,7 +616,7 @@ function redrawCanvas(initial) {
 }
 
 // Clear the canvas
-function clearCanvas() {
+function clearCanvas(showStatusNotification) {
     // Store the current composite operation
     const currentCompositeOperation = ctx.globalCompositeOperation;
 
@@ -511,7 +627,7 @@ function clearCanvas() {
     // Restore the composite operation
     ctx.globalCompositeOperation = currentCompositeOperation;
 
-    saveState(true);
+    saveState(showStatusNotification);
 }
 
 export const getCanvasAspectRatio = (useDecimals = false, delimiter = ":") => {
@@ -553,6 +669,7 @@ function initializeCanvas() {
     if (!loadFromLocalStorage()) {
         saveState(false); // Initialize with a blank state if nothing to load
     } else {
+        console.log("Restoring initial state");
         // If we loaded history successfully, we need to restore the canvas
         // using the current step from history
         const img = new Image();
@@ -569,7 +686,11 @@ function initializeCanvas() {
             // Update the undo button state
             document.getElementById("undo-button").disabled = currentStep <= 0;
         };
-        img.src = history[currentStep];
+        const savedState = history[currentStep];
+        console.log(savedState);
+        const imageDataSrc =
+            typeof savedState === "object" ? savedState.imageData : savedState;
+        img.src = imageDataSrc;
     }
 
     // Start drawing on mouse down
@@ -767,7 +888,7 @@ function initializeUI() {
                 "Are you sure you want to clear the canvas?" // + " This cannot be undone."
             )
         ) {
-            clearCanvas();
+            clearCanvas(true);
             // After clearing, we should update localStorage
             saveToLocalStorage(true);
         }
@@ -777,22 +898,11 @@ function initializeUI() {
     document
         .getElementById("reset-storage-button")
         .addEventListener("click", () => {
-            if (
-                confirm(
-                    "This will forget your sketch and your undo history. Are you sure?"
-                )
-            ) {
-                localStorage.removeItem(STORAGE_KEY_HISTORY);
-                localStorage.removeItem(STORAGE_KEY_CURRENT_STEP);
-                localStorage.removeItem(STORAGE_KEY_LAST_SAVED);
-
-                // Reset the canvas and history
-                clearCanvas();
-                history = [];
-                currentStep = -1;
-                saveState(false); // Initialize with a blank state
-
-                alert("Sketch & history have been forgotten.");
+            const confirmation = confirm(
+                "This will forget your sketch and your undo history. Are you sure?"
+            );
+            if (confirmation) {
+                forgetState();
             }
         });
 
@@ -832,6 +942,7 @@ const main = async () => {
     initialResizeCanvas();
     // displayLastSavedTime();
     await initializeApi();
+    await loadParamsFromUrl();
 };
 
 // Entry point
