@@ -41,6 +41,7 @@ let canvas,
     promptInput,
     submitButton,
     statusIndicator;
+let resultContainer, generatedImage, resultPlaceholder, toggleResultBtn;
 
 /* app methods */
 const initializeApi = async () => {
@@ -49,6 +50,138 @@ const initializeApi = async () => {
         config.getAwsRegion(),
         config.getBaseUrl()
     ).catch(console.error);
+};
+
+function generateImageWithCanvasInput() {
+    const timestampMs = Date.now();
+
+    // Get prompt
+    let prompt = promptInput.value.trim();
+    if (!prompt) {
+        showStatus("Please add a description!", 60000);
+        return;
+    }
+
+    // Show status to user
+    showStatus("Processing your sketch...");
+    console.log('Processing sketch with prompt "' + prompt + '"');
+
+    // Get the image as PNG from canvas
+    const imageData = getCanvasImageAsPNG();
+    // Get other input arguments
+    const aspectRatio = getCanvasAspectRatio();
+    const userId = getCognitoIdentityId();
+    const workflow = COMFYUI_WORKFLOW;
+    const imageType = "png";
+    const fileName = `sketch_user_${userId}_time_${timestampMs}.${imageType}`;
+    const fileType = `image/${imageType}`;
+
+    // Get upload link from API
+    uploadImageToS3(imageData, fileName, fileType)
+        .then((finalInputFileName) => {
+            console.log(`File uploaded to S3 as ${finalInputFileName}`);
+            console.log(
+                `Generating image with prompt="${prompt}", workflow="${workflow}", ` +
+                    `aspectRatio="${aspectRatio}", inputFilename="${finalInputFileName}"`
+            );
+            return generateImageWithInput(
+                prompt,
+                workflow,
+                aspectRatio,
+                finalInputFileName
+            );
+        })
+        .then((response) => {
+            console.log(response);
+            const jobId = response.id;
+            startPolling(jobId);
+
+            // Handle successful upload
+            showStatus("Processing your sketch...");
+        })
+        .catch((error) => {
+            console.error("Error in upload process:", error);
+            showStatus("Upload failed. Please try again.", 3000);
+        });
+}
+
+function updateProgress(progress) {
+    console.log(progress);
+    if (progress.details) {
+        showStatus(progress.details);
+    }
+}
+
+const startPolling = (jobId) => {
+    currentJobId = jobId;
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+    // setLoading(true);
+    // hidePlaceholder();
+    // hideError();
+    // elements.generatedImage.style.display = "none";
+    // elements.imagePlaceholder.style.display = "flex";
+    // elements.loadingSpinner.style.display = "flex";
+    // elements.placeholderText.style.display = "none";
+    pollingInterval = setInterval(async () => pollStatus(jobId), 2000);
+};
+
+const pollStatus = async (jobId) => {
+    try {
+        const response = await getJobStatus(jobId);
+
+        switch (response.status) {
+            case "IN_QUEUE":
+                updateProgress(config.QUEUED_PROGRESS_STATE);
+                break;
+            case "IN_PROGRESS":
+                updateProgress(utils.extractProgress(response));
+                break;
+            case "COMPLETED":
+                if (response.output === "ERROR") {
+                    throw new Error(response.error || "Generation failed");
+                }
+                updateProgress(config.COMPLETED_PROGRESS_STATE);
+                clearInterval(pollingInterval);
+                // setLoading(false);
+                // hidePlaceholder();
+                if (typeof response.output === "string") {
+                    console.log(response.output);
+                    displayImage(response.output);
+                }
+                break;
+            case "FAILED":
+                throw new Error(response.error || "Generation failed");
+        }
+    } catch (error) {
+        let errorMessage = config.DEFAULT_ERROR_MESSAGE;
+
+        // Check specifically for WAF throttling
+        if (utils.isFirewallThrottlingError(error)) {
+            errorMessage = config.FIREWALL_THROTTLING_ERROR_MESSAGE;
+        } else if (utils.is404Error(error)) {
+            if (config.CHECK_BUCKET_FIRST) {
+                errorMessage = "Image not found! Images expire after a day.";
+            } else {
+                // // If the SDK throws a 404 error, try direct image access
+                // const imageExists = await checkDirectImageAccess(jobId);
+                // if (!imageExists) {
+                //     errorMessage =
+                //         "Image not found! Images expire after a day.";
+                // }
+                console.log("404 - check direct image access");
+            }
+        }
+
+        console.error(error);
+        console.log(errorMessage);
+        clearInterval(pollingInterval);
+        // setLoading(false);
+        // showPlaceholder();
+        // showError(errorMessage);
+        // updateUrlWithParams(null);
+    }
 };
 
 /* storage methods */
@@ -127,58 +260,6 @@ function showStatus(message, duration = 2000) {
     }, duration);
 }
 
-// Function to handle the submit button click
-function handleSubmitButtonClick() {
-    const timestampMs = Date.now();
-
-    // Get prompt
-    let prompt = promptInput.value.trim();
-    if (!prompt) {
-        showStatus("Please add a description!", 60000);
-        return;
-    }
-
-    // Show status to user
-    showStatus("Processing your sketch...");
-    console.log('Processing sketch with prompt "' + prompt + '"');
-
-    // Get the image as PNG from canvas
-    const imageData = getCanvasImageAsPNG();
-    // Get other input arguments
-    const aspectRatio = getCanvasAspectRatio();
-    const userId = getCognitoIdentityId();
-    const workflow = COMFYUI_WORKFLOW;
-    const imageType = "png";
-    const fileName = `sketch_user_${userId}_time_${timestampMs}.${imageType}`;
-    const fileType = `image/${imageType}`;
-
-    // Get upload link from API
-    uploadImageToS3(imageData, fileName, fileType)
-        .then((finalInputFileName) => {
-            console.log(`File uploaded to S3 as ${finalInputFileName}`);
-            console.log(
-                `Generating image with prompt="${prompt}", workflow="${workflow}", ` +
-                    `aspectRatio="${aspectRatio}", inputFilename="${finalInputFileName}"`
-            );
-            return generateImageWithInput(
-                prompt,
-                workflow,
-                aspectRatio,
-                finalInputFileName
-            );
-        })
-        .then((response) => {
-            console.log(response);
-
-            // Handle successful upload
-            // showStatus("Sketch processed successfully!");
-        })
-        .catch((error) => {
-            console.error("Error in upload process:", error);
-            showStatus("Upload failed. Please try again.", 3000);
-        });
-}
-
 // Get inverted canvas image
 function getInvertedCanvas(sourceCanvas) {
     // Create a temporary canvas for processing
@@ -247,6 +328,24 @@ function displayLastSavedTime() {
     }
 }
 
+function displayImage(s3ImageUrl) {
+    const imageDisplayUrl = utils.getImageUrl(s3ImageUrl);
+    console.log(imageDisplayUrl);
+
+    // Show the generated image
+    generatedImage.src = imageDisplayUrl;
+    generatedImage.style.display = "block";
+    resultPlaceholder.style.display = "none";
+
+    // // On mobile, expand the panel when an image is ready
+    // if (window.innerWidth <= 768) {
+    //     resultContainer.classList.add("open");
+    // }
+
+    // Show a status message
+    showStatus("Your sketch is done!", 4000);
+}
+
 // Resize canvas to fill container
 function resizeCanvas(initial) {
     // Save current brush size and tool
@@ -292,7 +391,7 @@ function initialResizeCanvas() {
 }
 
 // Save the current state of the canvas
-function saveState(initial) {
+function saveState(showStatusNotification) {
     // Limit history size to prevent memory issues
     if (currentStep < history.length - 1) {
         history.splice(currentStep + 1);
@@ -301,27 +400,32 @@ function saveState(initial) {
     currentStep++;
 
     // Save the image data along with current canvas dimensions
+    const prompt = promptInput.value.trim();
     history.push({
         imageData: canvas.toDataURL(),
         width: canvas.width,
         height: canvas.height,
+        jobId: currentJobId,
+        prompt: prompt,
     });
 
     // Save to localStorage after updating history
-    saveToLocalStorage(!initial);
+    saveToLocalStorage(showStatusNotification);
 
     // Enable/disable undo button based on history
     document.getElementById("undo-button").disabled = currentStep <= 0;
 }
 
 // Restore canvas to a previous state
-function restoreState(step, initial) {
+function restoreState(step, showStatusNotification) {
     if (step < 0 || step >= history.length) return;
 
     currentStep = step;
 
     // Get the saved state
     const savedState = history[currentStep];
+    console.log("Restoring state");
+    console.log(savedState);
 
     // Handle both the new format (object) and old format (string)
     const imageDataSrc =
@@ -330,6 +434,12 @@ function restoreState(step, initial) {
         typeof savedState === "object" ? savedState.width : canvas.width;
     const originalHeight =
         typeof savedState === "object" ? savedState.height : canvas.height;
+    const jobId = typeof savedState === "object" ? savedState.jobId : null;
+    const prompt = typeof savedState === "object" ? savedState.prompt : null;
+
+    if (prompt) {
+        promptInput.value = `${prompt}`;
+    }
 
     const img = new Image();
     img.onload = function () {
@@ -374,7 +484,7 @@ function restoreState(step, initial) {
         }
 
         // Save to localStorage after restoring state
-        saveToLocalStorage(!initial);
+        saveToLocalStorage(showStatusNotification);
     };
     img.src = imageDataSrc;
 
@@ -385,7 +495,7 @@ function restoreState(step, initial) {
 // Redraw the canvas from current state
 function redrawCanvas(initial) {
     if (currentStep >= 0) {
-        restoreState(currentStep, initial);
+        restoreState(currentStep, !initial);
     }
 }
 
@@ -401,7 +511,7 @@ function clearCanvas() {
     // Restore the composite operation
     ctx.globalCompositeOperation = currentCompositeOperation;
 
-    saveState(false);
+    saveState(true);
 }
 
 export const getCanvasAspectRatio = (useDecimals = false, delimiter = ":") => {
@@ -441,7 +551,7 @@ function initializeCanvas() {
 
     // Try to load existing sketch, or initialize with a blank state
     if (!loadFromLocalStorage()) {
-        saveState(true); // Initialize with a blank state if nothing to load
+        saveState(false); // Initialize with a blank state if nothing to load
     } else {
         // If we loaded history successfully, we need to restore the canvas
         // using the current step from history
@@ -506,14 +616,14 @@ function initializeCanvas() {
     // Stop drawing when mouse is released or leaves canvas
     canvas.addEventListener("mouseup", () => {
         if (isDrawing && hasDrawnSinceLastSave) {
-            saveState(false);
+            saveState(true);
         }
         isDrawing = false;
     });
 
     canvas.addEventListener("mouseout", () => {
         if (isDrawing && hasDrawnSinceLastSave) {
-            saveState(false);
+            saveState(true);
         }
         isDrawing = false;
     });
@@ -566,7 +676,7 @@ function initializeCanvas() {
     canvas.addEventListener("touchend", (e) => {
         e.preventDefault();
         if (isDrawing && hasDrawnSinceLastSave) {
-            saveState(false);
+            saveState(true);
         }
         isDrawing = false;
     });
@@ -581,6 +691,32 @@ function initializeUI() {
     promptInput = document.getElementById("prompt-input");
     submitButton = document.getElementById("submit-button");
     statusIndicator = document.createElement("div");
+
+    resultContainer = document.getElementById("result-container");
+    generatedImage = document.getElementById("generated-image");
+    resultPlaceholder = document.getElementById("result-placeholder");
+    toggleResultBtn = document.getElementById("toggle-result");
+
+    // // Toggle the result panel on mobile
+    // toggleResultBtn.addEventListener("click", () => {
+    //     resultContainer.classList.toggle("open");
+    // });
+    // // Make the header also toggle the panel on mobile
+    // document.querySelector(".result-header").addEventListener("click", (e) => {
+    //     if (window.innerWidth <= 768 && e.target !== toggleResultBtn) {
+    //         resultContainer.classList.toggle("open");
+    //     }
+    // });
+    // // Handle window resize to adjust layout
+    // window.addEventListener("resize", () => {
+    //     if (window.innerWidth > 768) {
+    //         resultContainer.classList.remove("open");
+    //     }
+    // });
+
+    promptInput.addEventListener("change", () => {
+        saveState(false);
+    });
 
     // Tool selection controls
     document
@@ -621,7 +757,7 @@ function initializeUI() {
     // Button controls
     document.getElementById("undo-button").addEventListener("click", () => {
         if (currentStep > 0) {
-            restoreState(currentStep - 1, false);
+            restoreState(currentStep - 1, true);
         }
     });
 
@@ -661,7 +797,9 @@ function initializeUI() {
         });
 
     // Handle prompt submission
-    submitButton.addEventListener("click", handleSubmitButtonClick);
+    submitButton.addEventListener("click", () => {
+        generateImageWithCanvasInput();
+    });
 
     // Allow submitting with Enter key
     promptInput.addEventListener("keypress", (e) => {
@@ -688,15 +826,15 @@ function initializeUI() {
 /* init methods */
 
 // Main method
-const main = () => {
+const main = async () => {
     initializeUI();
     initializeCanvas();
     initialResizeCanvas();
     // displayLastSavedTime();
-    initializeApi();
+    await initializeApi();
 };
 
 // Entry point
-window.addEventListener("load", function () {
-    main();
+window.addEventListener("load", async () => {
+    await main();
 });

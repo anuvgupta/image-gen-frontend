@@ -1,5 +1,7 @@
 /* utilities */
 
+import * as config from "../config/config.js";
+
 export const isBase64 = (imageData) => {
     return (
         imageData.startsWith("iVBORw0") || imageData.startsWith("data:image")
@@ -65,4 +67,21 @@ export const calculateGCD = (a, b) => {
         a = temp;
     }
     return a;
+};
+
+export const extractProgress = (data) => {
+    if (
+        data.output &&
+        typeof data.output === "string" &&
+        data.output.includes("%") &&
+        data.output != "0%"
+    ) {
+        const progress = parseInt(data.output);
+        return {
+            value: progress,
+            details: `Progress: ${progress}%`,
+            status: "In Progress",
+        };
+    }
+    return config.LOADING_PROGRESS_STATE;
 };

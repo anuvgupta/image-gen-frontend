@@ -95,23 +95,6 @@ const initializeApi = async () => {
     ).catch(console.error);
 };
 
-const extractProgress = (data) => {
-    if (
-        data.output &&
-        typeof data.output === "string" &&
-        data.output.includes("%") &&
-        data.output != "0%"
-    ) {
-        const progress = parseInt(data.output);
-        return {
-            value: progress,
-            details: `Progress: ${progress}%`,
-            status: "In Progress",
-        };
-    }
-    return config.LOADING_PROGRESS_STATE;
-};
-
 const updateUrlWithParams = (jobId, prompt, model) => {
     const url = new URL(window.location);
     if (jobId) {
@@ -181,7 +164,7 @@ const pollStatus = async (jobId) => {
                 updateProgress(config.QUEUED_PROGRESS_STATE);
                 break;
             case "IN_PROGRESS":
-                updateProgress(extractProgress(response));
+                updateProgress(utils.extractProgress(response));
                 break;
             case "COMPLETED":
                 if (response.output === "ERROR") {
