@@ -7,17 +7,18 @@ import {
     getUploadLink,
     getCognitoIdentityId,
     uploadImageToS3,
-} from "../api-client.js";
-import * as utils from "../utils.js";
-import * as config from "../config.js";
+} from "../api/api-client.js";
+import * as utils from "../util/utils.js";
+import * as config from "../config/config.js";
 
 /* constants */
+const IS_PROD = config.isProd();
+const DEFAULT_BRUSH_COLOR = "#000";
+const COMFYUI_WORKFLOW = "sdxl_lightning_6step_juggernaut_xi_scribble";
 // LocalStorage keys
 const STORAGE_KEY_HISTORY = "sketch-app-history";
 const STORAGE_KEY_CURRENT_STEP = "sketch-app-current-step";
 const STORAGE_KEY_LAST_SAVED = "sketch-app-last-saved";
-const defaultBrushColor = "#000";
-const isProd = config.isProd();
 
 /* memory */
 let currentJobId = null;
@@ -143,22 +144,35 @@ function handleSubmitButtonClick() {
 
     // Get the image as PNG from canvas
     const imageData = getCanvasImageAsPNG();
+    // Get other input arguments
+    const aspectRatio = getCanvasAspectRatio();
+    const userId = getCognitoIdentityId();
+    const workflow = COMFYUI_WORKFLOW;
     const imageType = "png";
-    const fileName = `sketch_user_${getCognitoIdentityId()}_time_${timestampMs}.${imageType}`;
+    const fileName = `sketch_user_${userId}_time_${timestampMs}.${imageType}`;
     const fileType = `image/${imageType}`;
 
     // Get upload link from API
     uploadImageToS3(imageData, fileName, fileType)
-        .then((result) => {
-            console.log(result);
+        .then((finalInputFileName) => {
+            console.log(`File uploaded to S3 as ${finalInputFileName}`);
+            console.log(
+                `Generating image with prompt="${prompt}", workflow="${workflow}", ` +
+                    `aspectRatio="${aspectRatio}", inputFilename="${finalInputFileName}"`
+            );
+            return generateImageWithInput(
+                prompt,
+                workflow,
+                aspectRatio,
+                finalInputFileName
+            );
         })
-        // .then((response) => {
-        //     // Handle successful upload
-        //     showStatus("Sketch uploaded successfully!");
+        .then((response) => {
+            console.log(response);
 
-        //     // TODO: Call image generation API with the uploaded image URL
-        //     // generateImageFromSketch(response.imageUrl);
-        // })
+            // Handle successful upload
+            // showStatus("Sketch processed successfully!");
+        })
         .catch((error) => {
             console.error("Error in upload process:", error);
             showStatus("Upload failed. Please try again.", 3000);
@@ -390,6 +404,34 @@ function clearCanvas() {
     saveState(false);
 }
 
+export const getCanvasAspectRatio = (useDecimals = false, delimiter = ":") => {
+    const width = canvas.width;
+    const height = canvas.height;
+
+    if (width === 0 || height === 0) {
+        console.error("Canvas has zero width or height");
+        return "1:1"; // Default fallback
+    }
+
+    if (useDecimals) {
+        // For decimal representation (e.g., "1.778:1" for 16:9)
+        if (width >= height) {
+            const ratio = (width / height).toFixed(3);
+            return `${ratio}${delimiter}1`;
+        } else {
+            const ratio = (height / width).toFixed(3);
+            return `1${delimiter}${ratio}`;
+        }
+    } else {
+        // For integer representation (e.g., "16:9")
+        const gcd = utils.calculateGCD(width, height);
+        const simplifiedWidth = width / gcd;
+        const simplifiedHeight = height / gcd;
+
+        return `${simplifiedWidth}${delimiter}${simplifiedHeight}`;
+    }
+};
+
 function initializeCanvas() {
     // Drawing settings - set these before loading
     ctx.lineJoin = "round";
@@ -545,7 +587,7 @@ function initializeUI() {
         .getElementById("pen-button")
         .addEventListener("click", function () {
             currentTool = "pen";
-            ctx.strokeStyle = defaultBrushColor;
+            ctx.strokeStyle = DEFAULT_BRUSH_COLOR;
             ctx.globalCompositeOperation = "source-over";
 
             // Update UI

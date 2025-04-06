@@ -4,9 +4,9 @@ import {
     initializeApiClient,
     generateImage,
     getJobStatus,
-} from "./api-client.js";
-import * as utils from "./utils.js";
-import * as config from "./config.js";
+} from "./api/api-client.js";
+import * as utils from "./util/utils.js";
+import * as config from "./config/config.js";
 import * as themeSystem from "./theme/system.js";
 
 /* memory */

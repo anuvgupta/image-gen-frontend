@@ -88,19 +88,21 @@ export const generateImage = async (prompt, workflow, aspectRatio) => {
 };
 
 export const generateImageWithInput = async (
-    image,
     prompt,
     workflow,
-    aspectRatio
+    aspectRatio,
+    inputFilename = null
 ) => {
-    const body = {
-        input: {
-            image,
-            prompt,
-            workflow,
-            aspect_ratio: aspectRatio,
-        },
+    let input = {
+        prompt,
+        workflow,
+        aspect_ratio: aspectRatio,
     };
+    if (inputFilename) {
+        input["input_filename"] = inputFilename;
+    }
+
+    const body = { input };
 
     return signAndFetch("/run", "POST", body);
 };
