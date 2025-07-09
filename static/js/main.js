@@ -351,7 +351,7 @@ const createSlider = (name, position) => {
     sliderItem.innerHTML = `
         <button class="remove-slider-btn" data-slider-id="${sliderId}">×</button>
         <label class="slider-label" for="${sliderId}">${name}</label>
-        <input type="range" id="${sliderId}" min="0" max="500" value="100" data-name="${name}">
+        <input type="range" id="${sliderId}" min="0" max="200" value="100" data-name="${name}">
         <div class="slider-value">100%</div>
     `;
 
