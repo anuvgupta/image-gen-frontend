@@ -471,6 +471,12 @@ elements.addSliderBtn.addEventListener("click", () => {
     const name = prompt("Enter slider name:");
     if (name && name.trim()) {
         createSlider(name.trim(), sliders.length);
+        // Update URL immediately after creating slider
+        updateUrlWithParams(
+            currentJobId,
+            elements.promptInput.value,
+            elements.workflowSelect.value
+        );
     }
 });
 
