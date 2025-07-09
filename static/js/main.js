@@ -12,6 +12,8 @@ import * as themeSystem from "./theme/system.js";
 /* memory */
 let currentJobId = null;
 let pollingInterval = null;
+let sliders = []; // Array to store slider data
+let sliderCount = 0;
 
 /* ui elements */
 const elements = {
@@ -28,6 +30,9 @@ const elements = {
     loadingSpinner: document.getElementById("loadingSpinner"),
     placeholderText: document.getElementById("placeholderText"),
     aspectRatioSelect: document.getElementById("aspectRatioSelect"),
+    sliderSection: document.getElementById("sliderSection"),
+    sliderGrid: document.getElementById("sliderGrid"),
+    addSliderBtn: document.getElementById("addSliderBtn"),
 };
 
 /* ui methods */
@@ -105,19 +110,32 @@ const updateUrlWithParams = (jobId, prompt, model) => {
     if (prompt) {
         url.searchParams.set("p", prompt);
     } else if (!jobId) {
-        // Only remove prompt if we're also removing job ID
         url.searchParams.delete("p");
     }
     if (model) {
         url.searchParams.set("m", model);
     } else {
-        // Keep the model parameter unless explicitly cleared
         const currentModel = url.searchParams.get("m");
         if (!currentModel) {
             url.searchParams.set("m", elements.workflowSelect.value);
         }
     }
     url.searchParams.set("ar", elements.aspectRatioSelect.value);
+
+    // Add slider data to URL
+    const sliderData = collectSliderValues();
+    if (sliderData.length > 0) {
+        const sliderString = JSON.stringify(
+            sliderData.map((s) => ({
+                name: s.name,
+                value: s.value,
+            }))
+        );
+        url.searchParams.set("s", encodeURIComponent(sliderString));
+    } else {
+        url.searchParams.delete("s");
+    }
+
     window.history.pushState({}, "", url);
 };
 
@@ -210,8 +228,15 @@ const pollStatus = async (jobId) => {
 };
 
 const generateImageHandler = async () => {
-    const prompt = elements.promptInput.value.trim();
+    let prompt = elements.promptInput.value.trim();
     if (!prompt) return;
+
+    // Collect and format slider values
+    const sliderValues = collectSliderValues();
+    const sliderString = formatSliderString(sliderValues);
+
+    // Append slider string to prompt
+    prompt += sliderString;
 
     resetProgressSection();
     setLoading(true);
@@ -250,6 +275,7 @@ const loadParamsFromUrl = async () => {
     const prompt = urlParams.get("p");
     const model = urlParams.get("m");
     const aspectRatio = urlParams.get("ar");
+    const slidersParam = urlParams.get("s");
 
     if (prompt) {
         elements.promptInput.value = decodeURIComponent(prompt);
@@ -261,6 +287,32 @@ const loadParamsFromUrl = async () => {
 
     if (aspectRatio) {
         elements.aspectRatioSelect.value = aspectRatio;
+    }
+
+    // Load sliders from URL
+    if (slidersParam) {
+        try {
+            const sliderData = JSON.parse(decodeURIComponent(slidersParam));
+            sliderData.forEach((slider, index) => {
+                createSlider(slider.name, index);
+                // Set the slider value after creation
+                setTimeout(() => {
+                    const sliderInput = elements.sliderGrid.querySelector(
+                        `input[data-name="${slider.name}"]`
+                    );
+                    if (sliderInput) {
+                        sliderInput.value = slider.value;
+                        const valueDisplay =
+                            sliderInput.parentElement.querySelector(
+                                ".slider-value"
+                            );
+                        valueDisplay.textContent = `${slider.value}%`;
+                    }
+                }, 0);
+            });
+        } catch (error) {
+            console.error("Error loading sliders from URL:", error);
+        }
     }
 
     if (jobId) {
@@ -277,6 +329,71 @@ const loadParamsFromUrl = async () => {
     } else {
         showPlaceholder();
     }
+};
+
+const createSlider = (name, position) => {
+    const sliderItem = document.createElement("div");
+    sliderItem.className = "slider-item";
+    sliderItem.style.gridColumn = `${(position % 2) + 1}`;
+    sliderItem.style.gridRow = `${Math.floor(position / 2) + 1}`;
+
+    const sliderId = `slider-${sliderCount++}`;
+
+    sliderItem.innerHTML = `
+        <label for="${sliderId}">${name}</label>
+        <input type="range" id="${sliderId}" min="0" max="500" value="100" data-name="${name}">
+        <div class="slider-value">100%</div>
+    `;
+
+    const slider = sliderItem.querySelector('input[type="range"]');
+    const valueDisplay = sliderItem.querySelector(".slider-value");
+
+    slider.addEventListener("input", (e) => {
+        valueDisplay.textContent = `${e.target.value}%`;
+    });
+
+    elements.sliderGrid.appendChild(sliderItem);
+    sliders.push({ element: sliderItem, name: name });
+
+    updateAddButtonPosition();
+};
+
+const updateAddButtonPosition = () => {
+    const nextPosition = sliders.length;
+    const column = (nextPosition % 2) + 1;
+    const row = Math.floor(nextPosition / 2) + 1;
+
+    elements.addSliderBtn.style.gridColumn = `${column}`;
+    elements.addSliderBtn.style.gridRow = `${row}`;
+};
+
+const collectSliderValues = () => {
+    const sliderValues = [];
+    const sliderInputs = elements.sliderGrid.querySelectorAll(
+        'input[type="range"]'
+    );
+
+    sliderInputs.forEach((slider) => {
+        const name = slider.getAttribute("data-name");
+        const value = parseInt(slider.value);
+        const fraction = value / 100;
+        sliderValues.push({ name, value, fraction });
+    });
+
+    // Sort by fraction descending (highest to lowest)
+    sliderValues.sort((a, b) => b.fraction - a.fraction);
+
+    return sliderValues;
+};
+
+const formatSliderString = (sliderValues) => {
+    if (sliderValues.length === 0) return "";
+
+    const formatted = sliderValues
+        .map((slider) => `(${slider.name}:${slider.fraction})`)
+        .join(", ");
+
+    return `, ${formatted}, `;
 };
 
 /* app initialization */
@@ -301,6 +418,12 @@ elements.aspectRatioSelect.addEventListener("change", () => {
         elements.promptInput.value,
         elements.workflowSelect.value
     );
+});
+elements.addSliderBtn.addEventListener("click", () => {
+    const name = prompt("Enter slider name:");
+    if (name && name.trim()) {
+        createSlider(name.trim(), sliders.length);
+    }
 });
 
 // Handle browser back/forward navigation
