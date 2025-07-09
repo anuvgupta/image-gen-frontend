@@ -221,7 +221,8 @@ function loadFromLocalStorage() {
 
             // If we have a valid state, restore it
             if (
-                history.length > 0 &&
+                // history.length > 0 &&
+                history.length > 1 &&
                 currentStep >= 0 &&
                 currentStep < history.length
             ) {
@@ -231,11 +232,9 @@ function loadFromLocalStorage() {
 
                 // Ensure we wait for the canvas to be sized correctly before loading image
 
-                if (history.length > 1) {
-                    setTimeout(() => {
-                        showStatus("Found your last sketch", 3000);
-                    }, 100);
-                }
+                setTimeout(() => {
+                    showStatus("Found your last sketch", 3000);
+                }, 100);
 
                 return true;
             }
