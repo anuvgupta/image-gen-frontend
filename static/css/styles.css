@@ -357,7 +357,7 @@ button:disabled {
 
 .add-slider-btn {
     background-color: transparent;
-    color: white;
+    color: #444;
     border: 1px solid #ccc;
     border-radius: 6px;
     padding: 10px 15px;
@@ -370,10 +370,15 @@ button:disabled {
     opacity: 0.8;
 }
 
+[data-theme="dark"] .add-slider-btn {
+    color: white;
+}
+
 .add-slider-btn:hover {
     background-color: #0056b3;
     border: 1px solid #0056b3;
     opacity: 1;
+    color: white;
 }
 
 /* Add responsive behavior for mobile screens */
