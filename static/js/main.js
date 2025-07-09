@@ -228,15 +228,15 @@ const pollStatus = async (jobId) => {
 };
 
 const generateImageHandler = async () => {
-    let prompt = elements.promptInput.value.trim();
-    if (!prompt) return;
+    const originalPrompt = elements.promptInput.value.trim();
+    if (!originalPrompt) return;
 
     // Collect and format slider values
     const sliderValues = collectSliderValues();
     const sliderString = formatSliderString(sliderValues);
 
-    // Append slider string to prompt
-    prompt += sliderString;
+    // Create the final prompt for generation (don't modify the original)
+    const finalPrompt = originalPrompt + sliderString;
 
     resetProgressSection();
     setLoading(true);
@@ -249,12 +249,17 @@ const generateImageHandler = async () => {
 
     try {
         const response = await generateImage(
-            prompt,
+            finalPrompt, // Use the final prompt for generation
             elements.workflowSelect.value,
             elements.aspectRatioSelect.value
         );
 
-        updateUrlWithParams(response.id, prompt, elements.workflowSelect.value);
+        // Update URL with original prompt, not the modified one
+        updateUrlWithParams(
+            response.id,
+            originalPrompt,
+            elements.workflowSelect.value
+        );
         startPolling(response.id);
     } catch (error) {
         console.error("Error generating image:", error);
