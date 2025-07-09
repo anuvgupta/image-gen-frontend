@@ -230,9 +230,12 @@ function loadFromLocalStorage() {
                 );
 
                 // Ensure we wait for the canvas to be sized correctly before loading image
-                setTimeout(() => {
-                    showStatus("Found your last sketch", 3000);
-                }, 100);
+
+                if (history.length > 1) {
+                    setTimeout(() => {
+                        showStatus("Found your last sketch", 3000);
+                    }, 100);
+                }
 
                 return true;
             }
