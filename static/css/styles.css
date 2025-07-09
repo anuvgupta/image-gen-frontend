@@ -288,7 +288,7 @@ button:disabled {
 
 .slider-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 15px;
     min-height: 50px;
 }
@@ -299,6 +299,7 @@ button:disabled {
     gap: 8px;
     height: 50px;
     justify-content: center;
+    position: relative;
 }
 
 .slider-item label {
@@ -317,7 +318,37 @@ button:disabled {
 .slider-item .slider-value {
     font-size: 12px;
     color: #666;
-    text-align: center;
+    text-align: left;
+    padding-left: 5px;
+}
+
+.slider-label {
+    padding-left: 5px;
+}
+
+.remove-slider-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: transparent;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    margin: 0;
+    opacity: 0.6;
+}
+
+.remove-slider-btn:hover {
+    background: #c82333;
+    opacity: 0.9;
 }
 
 .add-slider-btn {

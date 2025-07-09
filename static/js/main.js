@@ -307,6 +307,15 @@ const loadParamsFromUrl = async () => {
                                 ".slider-value"
                             );
                         valueDisplay.textContent = `${slider.value}%`;
+
+                        // Store the slider ID for removal functionality
+                        const sliderId = sliderInput.id;
+                        const sliderIndex = sliders.findIndex(
+                            (s) => s.name === slider.name
+                        );
+                        if (sliderIndex !== -1) {
+                            sliders[sliderIndex].id = sliderId;
+                        }
                     }
                 }, 0);
             });
@@ -334,34 +343,69 @@ const loadParamsFromUrl = async () => {
 const createSlider = (name, position) => {
     const sliderItem = document.createElement("div");
     sliderItem.className = "slider-item";
-    sliderItem.style.gridColumn = `${(position % 2) + 1}`;
-    sliderItem.style.gridRow = `${Math.floor(position / 2) + 1}`;
+    sliderItem.style.gridColumn = `${(position % 3) + 1}`; // Changed from % 2
+    sliderItem.style.gridRow = `${Math.floor(position / 3) + 1}`; // Changed from / 2
 
     const sliderId = `slider-${sliderCount++}`;
 
     sliderItem.innerHTML = `
-        <label for="${sliderId}">${name}</label>
+        <button class="remove-slider-btn" data-slider-id="${sliderId}">×</button>
+        <label class="slider-label" for="${sliderId}">${name}</label>
         <input type="range" id="${sliderId}" min="0" max="500" value="100" data-name="${name}">
         <div class="slider-value">100%</div>
     `;
 
     const slider = sliderItem.querySelector('input[type="range"]');
     const valueDisplay = sliderItem.querySelector(".slider-value");
+    const removeBtn = sliderItem.querySelector(".remove-slider-btn");
 
     slider.addEventListener("input", (e) => {
         valueDisplay.textContent = `${e.target.value}%`;
+        updateUrlWithParams(
+            currentJobId,
+            elements.promptInput.value,
+            elements.workflowSelect.value
+        );
+    });
+
+    removeBtn.addEventListener("click", () => {
+        removeSlider(sliderId);
     });
 
     elements.sliderGrid.appendChild(sliderItem);
-    sliders.push({ element: sliderItem, name: name });
+    sliders.push({ element: sliderItem, name: name, id: sliderId });
 
     updateAddButtonPosition();
 };
 
+const removeSlider = (sliderId) => {
+    const sliderIndex = sliders.findIndex((s) => s.id === sliderId);
+    if (sliderIndex === -1) return;
+
+    const sliderItem = sliders[sliderIndex].element;
+    sliderItem.remove();
+    sliders.splice(sliderIndex, 1);
+
+    // Reposition all remaining sliders
+    sliders.forEach((slider, index) => {
+        slider.element.style.gridColumn = `${(index % 3) + 1}`;
+        slider.element.style.gridRow = `${Math.floor(index / 3) + 1}`;
+    });
+
+    updateAddButtonPosition();
+
+    // Update URL
+    updateUrlWithParams(
+        currentJobId,
+        elements.promptInput.value,
+        elements.workflowSelect.value
+    );
+};
+
 const updateAddButtonPosition = () => {
     const nextPosition = sliders.length;
-    const column = (nextPosition % 2) + 1;
-    const row = Math.floor(nextPosition / 2) + 1;
+    const column = (nextPosition % 3) + 1; // Changed from % 2
+    const row = Math.floor(nextPosition / 3) + 1; // Changed from / 2
 
     elements.addSliderBtn.style.gridColumn = `${column}`;
     elements.addSliderBtn.style.gridRow = `${row}`;
@@ -376,6 +420,10 @@ const collectSliderValues = () => {
     sliderInputs.forEach((slider) => {
         const name = slider.getAttribute("data-name");
         const value = parseInt(slider.value);
+
+        // Skip sliders at 0%
+        if (value === 0) return;
+
         const fraction = value / 100;
         sliderValues.push({ name, value, fraction });
     });
