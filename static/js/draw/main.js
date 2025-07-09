@@ -1,4 +1,4 @@
-// sketch/main.js
+// draw/main.js
 
 import {
     initializeApiClient,

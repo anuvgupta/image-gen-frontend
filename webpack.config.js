@@ -17,7 +17,7 @@ const CSS_STYLES_FOLDER = "./static/css";
 const JS_SCRIPTS_FOLDER = "./static/js";
 const IMG_ASSET_FOLDER = "./static/img";
 const FAVICON_PATH = "static/favicon.ico";
-const SKETCH_FOLDER = "./static/sketch";
+const DRAW_FOLDER = "./static/draw";
 
 // Helper function to minify inline JS
 async function minifyInlineJs(code) {
@@ -73,8 +73,8 @@ module.exports = {
     entry: {
         main: [`${JS_SCRIPTS_FOLDER}/main.js`],
         styles: `${CSS_STYLES_FOLDER}/styles.css`,
-        sketch_main: [`${JS_SCRIPTS_FOLDER}/sketch/main.js`],
-        sketch_styles: [`${CSS_STYLES_FOLDER}/sketch/styles.css`],
+        draw_main: [`${JS_SCRIPTS_FOLDER}/draw/main.js`],
+        draw_styles: [`${CSS_STYLES_FOLDER}/draw/styles.css`],
     },
     output: {
         path: path.resolve(__dirname, "dist"),
@@ -150,9 +150,9 @@ module.exports = {
             inject: true,
         }),
         new HtmlWebpackPlugin({
-            template: `${SKETCH_FOLDER}/index.html`,
-            filename: "sketch/index.html",
-            chunks: ["sketch_main", "sketch_styles"],
+            template: `${DRAW_FOLDER}/index.html`,
+            filename: "draw/index.html",
+            chunks: ["draw_main", "draw_styles"],
             templateParameters: templateHelpers,
             minify: {
                 removeAttributeQuotes: true,
@@ -178,8 +178,8 @@ module.exports = {
                     to: "favicon.ico",
                 },
                 {
-                    from: `${SKETCH_FOLDER}`,
-                    to: "sketch",
+                    from: `${DRAW_FOLDER}`,
+                    to: "draw",
                     globOptions: {
                         ignore: ["**/index.html"], // Don't copy index.html as it will be processed by HtmlWebpackPlugin
                     },

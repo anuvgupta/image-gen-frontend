@@ -87,6 +87,25 @@ body {
     height: 100%;
 }
 
+.navbar a {
+    color: var(--navbar-text);
+    text-decoration: none;
+    margin-left: auto;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.navbar a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar a:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
 /* Main content styles */
 .main-content {
     max-width: 800px;
@@ -285,6 +304,8 @@ button:disabled {
     opacity: 0.85;
     /* Slightly reduce opacity of navbar icon */
 }
+
+
 
 /* Dark mode form element placeholder styles */
 @media (prefers-color-scheme: dark) {
