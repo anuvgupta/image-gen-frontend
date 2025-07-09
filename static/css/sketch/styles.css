@@ -1,5 +1,11 @@
 /* sketch/styles.css */
 
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300italic,600italic,300,400,500,600");
+
+* {
+    font-family: Source Sans Pro, Arial, sans-serif;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -7,7 +13,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    font-family: Arial, sans-serif;
+    font-family: Source Sans Pro, Arial, sans-serif;
 }
 
 .app-container {
@@ -170,7 +176,7 @@ canvas {
     font-size: 16px;
     min-height: 100px;
     resize: none;
-    font-family: Arial, sans-serif;
+    font-family: Source Sans Pro, Arial, sans-serif;
     box-sizing: border-box;
 }
 
