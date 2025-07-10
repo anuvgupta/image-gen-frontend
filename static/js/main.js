@@ -473,7 +473,7 @@ elements.aspectRatioSelect.addEventListener("change", () => {
     );
 });
 elements.addSliderBtn.addEventListener("click", () => {
-    const name = prompt("Enter slider name:");
+    const name = prompt(config.FLAVOR_PROMPT_TEXT);
     if (name && name.trim()) {
         createSlider(name.trim(), sliders.length);
         // Update URL immediately after creating slider

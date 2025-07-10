@@ -45,7 +45,9 @@ export const ASPECT_RATIOS = [
         name: "4:3 Standard",
     },
 ];
-export const PLACEHOLDER_TEXT = "Generated image will appear here";
+export const PLACEHOLDER_TEXT = "Your image will be imagined here";
+export const FLAVOR_PROMPT_TEXT =
+    'What flavor do you want to add? Not limited to effects like lighting or color. You can add anything like "spice", or "weirdness".';
 export const DEFAULT_ERROR_MESSAGE =
     "Something went wrong. Please try again later.";
 export const FIREWALL_THROTTLING_ERROR_MESSAGE =
@@ -53,23 +55,23 @@ export const FIREWALL_THROTTLING_ERROR_MESSAGE =
 
 export const COMPLETED_PROGRESS_STATE = {
     value: 100,
-    status: "Generated",
-    details: "Your image is done!",
+    status: "Imagined", // Generated
+    details: "Your image is ready!",
 };
 export const EXPIRING_PROGRESS_STATE = {
     value: 100,
-    status: "Generated",
+    status: "Imagined", // Generated
     details: "⚠️ This image is expiring soon!",
 };
 export const QUEUED_PROGRESS_STATE = {
     value: 0,
-    status: "In Queue",
-    details: "Waiting for worker...",
+    status: "Imagining", // In queue
+    details: "Waiting in line...", // Waiting for worker
 };
 export const LOADING_PROGRESS_STATE = {
     value: 0,
-    status: "In Progress",
-    details: "Loading model...",
+    status: "Imagining", // In Progress
+    details: "Loading imagination...", // Loading model
 };
 
 /* smart constants */
