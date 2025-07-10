@@ -122,16 +122,10 @@ const updateUrlWithParams = (jobId, prompt, model) => {
     }
     url.searchParams.set("ar", elements.aspectRatioSelect.value);
 
-    // Add slider data to URL
-    const sliderData = collectSliderValues();
-    if (sliderData.length > 0) {
-        const sliderString = JSON.stringify(
-            sliderData.map((s) => ({
-                name: s.name,
-                value: s.value,
-            }))
-        );
-        url.searchParams.set("s", encodeURIComponent(sliderString));
+    // Add slider data to URL using same format as drawing app
+    const sliderString = encodeSliderDataForUrl();
+    if (sliderString) {
+        url.searchParams.set("s", sliderString);
     } else {
         url.searchParams.delete("s");
     }
@@ -294,10 +288,10 @@ const loadParamsFromUrl = async () => {
         elements.aspectRatioSelect.value = aspectRatio;
     }
 
-    // Load sliders from URL
+    // Load sliders from URL using new format
     if (slidersParam) {
         try {
-            const sliderData = JSON.parse(decodeURIComponent(slidersParam));
+            const sliderData = decodeSliderDataFromUrl(slidersParam);
             sliderData.forEach((slider, index) => {
                 createSlider(slider.name, index);
                 // Set the slider value after creation
@@ -447,6 +441,30 @@ const formatSliderString = (sliderValues) => {
         .join(", ");
 
     return `, ${formatted}, `;
+};
+
+const encodeSliderDataForUrl = () => {
+    if (sliders.length === 0) return "";
+
+    const sliderData = sliders.map((slider) => {
+        const sliderInput = slider.element.querySelector('input[type="range"]');
+        const value = parseInt(sliderInput.value);
+        return `${encodeURIComponent(slider.name)}:${value}`;
+    });
+
+    return sliderData.join(",");
+};
+
+const decodeSliderDataFromUrl = (encodedString) => {
+    if (!encodedString) return [];
+
+    return encodedString.split(",").map((pair) => {
+        const [label, value] = pair.split(":");
+        return {
+            name: decodeURIComponent(label),
+            value: parseInt(value) || 100,
+        };
+    });
 };
 
 /* app initialization */

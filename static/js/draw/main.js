@@ -276,6 +276,7 @@ function clearUrlParams() {
     const url = new URL(window.location);
     url.searchParams.delete("i");
     url.searchParams.delete("p");
+    url.searchParams.delete("s");
     window.history.pushState({}, "", url);
 }
 
@@ -292,6 +293,15 @@ const updateUrlWithParams = (jobId, prompt) => {
         // Only remove prompt if we're also removing job ID
         url.searchParams.delete("p");
     }
+
+    // Add style knobs to URL
+    const styleKnobsState = encodeStyleKnobsForUrl();
+    if (styleKnobsState) {
+        url.searchParams.set("s", styleKnobsState);
+    } else {
+        url.searchParams.delete("s");
+    }
+
     window.history.pushState({}, "", url);
 };
 
@@ -306,6 +316,9 @@ const loadParamsFromUrl = async () => {
     if (prompt) {
         promptInput.value = decodeURIComponent(prompt);
     }
+
+    // Load style knobs from URL
+    loadStyleKnobsFromUrl();
 
     if (!jobId) {
         jobId = getJobIdFromHistory();
@@ -464,6 +477,8 @@ function createStyleKnob(label, value = 100) {
 
     slider.addEventListener("input", (e) => {
         valueDisplay.textContent = e.target.value + "%";
+        // Update URL when slider value changes
+        updateUrlWithParams(currentJobId, promptInput.value.trim());
     });
 
     deleteBtn.addEventListener("click", () => {
@@ -475,8 +490,8 @@ function createStyleKnob(label, value = 100) {
     return knobDiv;
 }
 
-function addNewKnob(label) {
-    const knob = createStyleKnob(label);
+function addNewKnob(label, value = 100) {
+    const knob = createStyleKnob(label, value);
     const grid = document.getElementById("style-knobs-grid");
     const addButton = document.getElementById("add-knob-btn");
 
@@ -488,6 +503,9 @@ function addNewKnob(label) {
         label: label,
         element: knob,
     });
+
+    // Update URL when knob is added
+    updateUrlWithParams(currentJobId, promptInput.value.trim());
 }
 
 function deleteStyleKnob(knobElement) {
@@ -499,6 +517,9 @@ function deleteStyleKnob(knobElement) {
 
     // Remove from DOM
     knobElement.remove();
+
+    // Update URL when knob is deleted
+    updateUrlWithParams(currentJobId, promptInput.value.trim());
 }
 
 function collectStyleKnobsData() {
@@ -534,6 +555,42 @@ function formatStyleKnobsString(knobData) {
     );
 
     return ", " + formattedPairs.join(", ") + ", ";
+}
+
+function encodeStyleKnobsForUrl() {
+    if (styleKnobs.length === 0) return "";
+
+    const knobsData = styleKnobs.map((knob) => {
+        const slider = knob.element.querySelector(".knob-slider");
+        const value = parseInt(slider.value);
+        return `${encodeURIComponent(knob.label)}:${value}`;
+    });
+
+    return knobsData.join(",");
+}
+
+function decodeStyleKnobsFromUrl(encodedString) {
+    if (!encodedString) return [];
+
+    return encodedString.split(",").map((pair) => {
+        const [label, value] = pair.split(":");
+        return {
+            label: decodeURIComponent(label),
+            value: parseInt(value) || 100,
+        };
+    });
+}
+
+function loadStyleKnobsFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const styleKnobsParam = urlParams.get("s");
+
+    if (styleKnobsParam) {
+        const knobsData = decodeStyleKnobsFromUrl(styleKnobsParam);
+        knobsData.forEach((knobData) => {
+            addNewKnob(knobData.label, knobData.value);
+        });
+    }
 }
 
 // Resize canvas to fill container
