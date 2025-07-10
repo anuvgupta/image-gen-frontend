@@ -159,7 +159,7 @@ canvas {
 }
 
 #bottom-bar {
-    border-top: 1px solid #eee;
+    /* border-top: 1px solid #eee; */
     background-color: #f5f5f5;
     color: white;
     padding: 15px;
@@ -265,8 +265,8 @@ canvas {
 
 #style-knobs-container {
     border-top: 1px solid #eee;
-    background-color: #fafafa;
-    padding: 15px;
+    background-color: #f5f5f5;
+    padding: 15px 15px 5px 15px;
     max-height: 200px;
     overflow-y: auto;
 }
@@ -338,6 +338,10 @@ canvas {
     background-color: #e6f7ff;
     border-color: #1890ff;
     color: #1890ff;
+}
+
+#knob-plus-icon-svg {
+    transform: scale(1.5);
 }
 
 /* Mobile/responsive styles */
