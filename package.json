@@ -8,6 +8,8 @@
     "scripts": {
         "build": "npm run webpack-build",
         "start": "npm run webpack-start-dev-server",
+        "build-dev": "STAGE=dev npm run build",
+        "start-dev": "STAGE=dev npm run start",
         "webpack-build": "webpack --config webpack.config.js",
         "webpack-start-dev-server": "webpack serve --mode development",
         "clean": "rm -rf dist",

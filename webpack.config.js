@@ -11,6 +11,7 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const { minify } = require("terser");
 
 const LOGS_ENABLED = process.env.STAGE === "dev" || false;
+const IS_DEVELOPMENT = process.env.STAGE === "dev";
 const INIT_SCRIPT_PATH = "./static/js/theme/init.js";
 const ERROR_PAGES_FOLDER = "./static/errors";
 const CSS_STYLES_FOLDER = "./static/css";
@@ -21,6 +22,9 @@ const DRAW_FOLDER = "./static/draw";
 
 // Helper function to minify inline JS
 async function minifyInlineJs(code) {
+    if (IS_DEVELOPMENT) {
+        return code; // Don't minify in development
+    }
     const result = await minify(code, {
         compress: {
             drop_console: !LOGS_ENABLED,
@@ -57,19 +61,21 @@ const errorHtmlPlugins = errorPages.map(
             template: page.path,
             filename: `errors/${page.name}.html`,
             chunks: [],
-            minify: {
-                removeAttributeQuotes: true,
-                collapseWhitespace: true,
-                removeComments: true,
-                minifyJS: true,
-                minifyCSS: true,
-            },
+            minify: IS_DEVELOPMENT
+                ? false
+                : {
+                      removeAttributeQuotes: true,
+                      collapseWhitespace: true,
+                      removeComments: true,
+                      minifyJS: true,
+                      minifyCSS: true,
+                  },
             inject: true,
         })
 );
 
 module.exports = {
-    mode: "production",
+    mode: IS_DEVELOPMENT ? "development" : "production",
     entry: {
         main: [`${JS_SCRIPTS_FOLDER}/main.js`],
         styles: `${CSS_STYLES_FOLDER}/styles.css`,
@@ -78,7 +84,9 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: "js/[name].[contenthash].js",
+        filename: IS_DEVELOPMENT
+            ? "js/[name].js"
+            : "js/[name].[contenthash].js",
         assetModuleFilename: "assets/[hash][ext][query]",
     },
     module: {
@@ -120,7 +128,7 @@ module.exports = {
         ],
     },
     optimization: {
-        minimize: true, // Keep general minimization enabled
+        minimize: !IS_DEVELOPMENT, // Disable minimization in development
         minimizer: [
             new TerserPlugin({
                 terserOptions: {
@@ -140,13 +148,15 @@ module.exports = {
             filename: "index.html",
             chunks: ["main", "styles"],
             templateParameters: templateHelpers, // Use template helpers here
-            minify: {
-                removeAttributeQuotes: true,
-                collapseWhitespace: true,
-                removeComments: true,
-                minifyJS: true,
-                minifyCSS: true,
-            },
+            minify: IS_DEVELOPMENT
+                ? false
+                : {
+                      removeAttributeQuotes: true,
+                      collapseWhitespace: true,
+                      removeComments: true,
+                      minifyJS: true,
+                      minifyCSS: true,
+                  },
             inject: true,
         }),
         new HtmlWebpackPlugin({
@@ -154,18 +164,22 @@ module.exports = {
             filename: "draw/index.html",
             chunks: ["draw_main", "draw_styles"],
             templateParameters: templateHelpers,
-            minify: {
-                removeAttributeQuotes: true,
-                collapseWhitespace: true,
-                removeComments: true,
-                minifyJS: true,
-                minifyCSS: true,
-            },
+            minify: IS_DEVELOPMENT
+                ? false
+                : {
+                      removeAttributeQuotes: true,
+                      collapseWhitespace: true,
+                      removeComments: true,
+                      minifyJS: true,
+                      minifyCSS: true,
+                  },
             inject: true,
         }),
         ...errorHtmlPlugins,
         new MiniCssExtractPlugin({
-            filename: "css/[name].[contenthash].css",
+            filename: IS_DEVELOPMENT
+                ? "css/[name].css"
+                : "css/[name].[contenthash].css",
         }),
         new CopyWebpackPlugin({
             patterns: [
@@ -194,4 +208,5 @@ module.exports = {
         port: 8080,
         open: true,
     },
+    devtool: IS_DEVELOPMENT ? "eval-source-map" : "source-map", // Better debugging in dev
 };

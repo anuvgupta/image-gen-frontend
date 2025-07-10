@@ -1,8 +1,8 @@
 {
     "package": "image-gen-frontend",
     "targets": {
-        "build": "npm run build",
-        "start": "npm run start",
+        "build": "npm run build-dev",
+        "start": "npm run start-dev",
         "clean": "npm run clean",
         "install": "npm install",
         "webpack": "npm run webpack-build"
