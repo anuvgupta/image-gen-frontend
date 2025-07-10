@@ -10,6 +10,7 @@ import {
 } from "../api/api-client.js";
 import * as utils from "../util/utils.js";
 import * as config from "../config/config.js";
+import * as themeSystem from "../theme/system.js";
 
 /* constants */
 const IS_PROD = config.isProd();
