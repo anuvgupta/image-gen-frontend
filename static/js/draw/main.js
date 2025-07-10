@@ -23,6 +23,7 @@ const STORAGE_KEY_LAST_SAVED = "sketch-app-last-saved";
 /* memory */
 let currentJobId = null;
 let pollingInterval = null;
+let styleKnobs = [];
 // Canvas history for undo functionality
 let history = [];
 let currentStep = -1;
@@ -57,6 +58,9 @@ function generateImageWithCanvasInput() {
 
     // Get prompt
     let prompt = promptInput.value.trim();
+    const styleKnobsData = collectStyleKnobsData();
+    const styleKnobsString = formatStyleKnobsString(styleKnobsData);
+    prompt = prompt + styleKnobsString;
     if (!prompt) {
         showStatus("Please add a description!", 60000);
         return;
@@ -441,6 +445,72 @@ function displayImage(s3ImageUrl) {
 
     // Show a status message
     showStatus("Your sketch is done!", 4000);
+}
+
+function createStyleKnob(label, value = 100) {
+    const knobDiv = document.createElement("div");
+    knobDiv.className = "style-knob";
+
+    knobDiv.innerHTML = `
+        <div class="knob-label">${label}</div>
+        <input type="range" class="knob-slider" min="0" max="250" value="${value}">
+        <div class="knob-value">${value}%</div>
+    `;
+
+    const slider = knobDiv.querySelector(".knob-slider");
+    const valueDisplay = knobDiv.querySelector(".knob-value");
+
+    slider.addEventListener("input", (e) => {
+        valueDisplay.textContent = e.target.value + "%";
+    });
+
+    return knobDiv;
+}
+
+function addNewKnob(label) {
+    const knob = createStyleKnob(label);
+    const grid = document.getElementById("style-knobs-grid");
+    const addButton = document.getElementById("add-knob-btn");
+
+    // Insert knob before the add button
+    grid.insertBefore(knob, addButton);
+
+    // Store knob data
+    styleKnobs.push({
+        label: label,
+        element: knob,
+    });
+}
+
+function collectStyleKnobsData() {
+    const knobData = [];
+
+    styleKnobs.forEach((knob) => {
+        const slider = knob.element.querySelector(".knob-slider");
+        const value = parseInt(slider.value);
+        const fraction = value / 100; // Convert percentage to fraction
+
+        knobData.push({
+            label: knob.label,
+            value: value,
+            fraction: fraction,
+        });
+    });
+
+    // Sort by fraction descending
+    knobData.sort((a, b) => b.fraction - a.fraction);
+
+    return knobData;
+}
+
+function formatStyleKnobsString(knobData) {
+    if (knobData.length === 0) return "";
+
+    const formattedPairs = knobData.map(
+        (knob) => `(${knob.label}:${knob.fraction.toFixed(2)})`
+    );
+
+    return ", " + formattedPairs.join(", ") + ", ";
 }
 
 // Resize canvas to fill container
@@ -917,6 +987,14 @@ function initializeUI() {
     promptInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
             submitButton.click();
+        }
+    });
+
+    // Add knob button functionality
+    document.getElementById("add-knob-btn").addEventListener("click", () => {
+        const label = prompt("Enter style name:");
+        if (label && label.trim()) {
+            addNewKnob(label.trim());
         }
     });
 

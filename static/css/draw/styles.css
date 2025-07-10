@@ -263,6 +263,83 @@ canvas {
     height: 20px;
 }
 
+#style-knobs-container {
+    border-top: 1px solid #eee;
+    background-color: #fafafa;
+    padding: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#style-knobs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 100px);
+    gap: 10px;
+    justify-content: start;
+}
+
+.style-knob {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.knob-label {
+    font-size: 12px;
+    text-align: center;
+    margin-bottom: 5px;
+    font-weight: 500;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.knob-slider {
+    width: 70px;
+    height: 4px;
+    background: #ddd;
+    border-radius: 2px;
+    outline: none;
+    margin: 5px 0;
+}
+
+.knob-value {
+    font-size: 11px;
+    color: #666;
+}
+
+.add-knob-button {
+    width: 100px;
+    height: 100px;
+    background-color: #f0f0f0;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.add-knob-button:hover {
+    background-color: #e6f7ff;
+    border-color: #1890ff;
+    color: #1890ff;
+}
+
 /* Mobile/responsive styles */
 /* @media (max-width: 768px) {
     .app-container {
