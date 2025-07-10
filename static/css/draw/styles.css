@@ -244,7 +244,7 @@ canvas {
 }
 
 #result-placeholder {
-    color: #000;
+    color: #333;
     text-align: center;
 }
 
@@ -267,33 +267,62 @@ canvas {
     border-top: 1px solid #eee;
     background-color: #f5f5f5;
     padding: 15px 15px 5px 15px;
-    max-height: 200px;
+    max-height: 400px;
     overflow-y: auto;
 }
 
 #style-knobs-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, 100px);
+    grid-template-columns: repeat(auto-fit, 200px);
     gap: 10px;
     justify-content: start;
 }
 
 .style-knob {
-    width: 100px;
-    height: 100px;
+    width: 200px;
+    height: 70px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background-color: white;
-    border: 1px solid #ddd;
+    border: 1px solid white;
     border-radius: 8px;
     padding: 8px;
     box-sizing: border-box;
+    position: relative;
+}
+
+.delete-knob-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 16px;
+    height: 16px;
+    background-color: #ff7875;
+    border: 1px solid white;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s;
+    line-height: 10px;
+}
+
+.style-knob:hover .delete-knob-btn {
+    opacity: 1;
+}
+
+.delete-knob-btn:hover {
+    background-color: #ff4d4f;
 }
 
 .knob-label {
-    font-size: 12px;
+    font-size: 14px;
     text-align: center;
     margin-bottom: 5px;
     font-weight: 500;
@@ -301,36 +330,39 @@ canvas {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    padding-bottom: 3px;
 }
 
 .knob-slider {
-    width: 70px;
+    width: 90%;
     height: 4px;
     background: #ddd;
     border-radius: 2px;
     outline: none;
     margin: 5px 0;
+    opacity: 0.85;
 }
 
 .knob-value {
-    font-size: 11px;
+    font-size: 12px;
     color: #666;
+    padding-top: 3px;
 }
 
 .add-knob-button {
-    width: 100px;
-    height: 100px;
+    width: 200px;
+    height: 70px;
     background-color: #f0f0f0;
-    border: 2px dashed #ccc;
+    border: 2px dashed #d0d0d0;
     border-radius: 8px;
     cursor: pointer;
     display: flex;
-    flex-direction: column;
+    /* flex-direction: column; */
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    font-size: 12px;
-    color: #666;
+    gap: 6px;
+    font-size: 14px;
+    color: #777;
     transition: all 0.2s;
 }
 
@@ -341,7 +373,7 @@ canvas {
 }
 
 #knob-plus-icon-svg {
-    transform: scale(1.5);
+    transform: scale(1.2);
 }
 
 /* Mobile/responsive styles */

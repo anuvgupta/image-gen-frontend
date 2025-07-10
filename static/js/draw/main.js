@@ -452,6 +452,7 @@ function createStyleKnob(label, value = 100) {
     knobDiv.className = "style-knob";
 
     knobDiv.innerHTML = `
+        <button class="delete-knob-btn" title="Delete ${label}">×</button>
         <div class="knob-label">${label}</div>
         <input type="range" class="knob-slider" min="0" max="250" value="${value}">
         <div class="knob-value">${value}%</div>
@@ -459,9 +460,16 @@ function createStyleKnob(label, value = 100) {
 
     const slider = knobDiv.querySelector(".knob-slider");
     const valueDisplay = knobDiv.querySelector(".knob-value");
+    const deleteBtn = knobDiv.querySelector(".delete-knob-btn");
 
     slider.addEventListener("input", (e) => {
         valueDisplay.textContent = e.target.value + "%";
+    });
+
+    deleteBtn.addEventListener("click", () => {
+        if (confirm(`Delete "${label}" style knob?`)) {
+            deleteStyleKnob(knobDiv);
+        }
     });
 
     return knobDiv;
@@ -482,12 +490,27 @@ function addNewKnob(label) {
     });
 }
 
+function deleteStyleKnob(knobElement) {
+    // Find and remove from styleKnobs array
+    const index = styleKnobs.findIndex((knob) => knob.element === knobElement);
+    if (index !== -1) {
+        styleKnobs.splice(index, 1);
+    }
+
+    // Remove from DOM
+    knobElement.remove();
+}
+
 function collectStyleKnobsData() {
     const knobData = [];
 
     styleKnobs.forEach((knob) => {
         const slider = knob.element.querySelector(".knob-slider");
         const value = parseInt(slider.value);
+
+        // Skip sliders at 0%
+        if (value === 0) return;
+
         const fraction = value / 100; // Convert percentage to fraction
 
         knobData.push({
@@ -992,7 +1015,7 @@ function initializeUI() {
 
     // Add knob button functionality
     document.getElementById("add-knob-btn").addEventListener("click", () => {
-        const label = prompt("Enter style name:");
+        const label = prompt(config.FLAVOR_PROMPT_TEXT);
         if (label && label.trim()) {
             addNewKnob(label.trim());
         }

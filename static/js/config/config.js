@@ -47,7 +47,7 @@ export const ASPECT_RATIOS = [
 ];
 export const PLACEHOLDER_TEXT = "Your image will be imagined here";
 export const FLAVOR_PROMPT_TEXT =
-    'What flavor do you want to add? Not limited to effects like lighting or color. You can add anything like "spice", or "weirdness".';
+    'Add a flavor like "spice" or "weirdness" or "dreamy":';
 export const DEFAULT_ERROR_MESSAGE =
     "Something went wrong. Please try again later.";
 export const FIREWALL_THROTTLING_ERROR_MESSAGE =
