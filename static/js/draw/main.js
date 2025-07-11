@@ -57,19 +57,22 @@ const initializeApi = async () => {
 function generateImageWithCanvasInput() {
     const timestampMs = Date.now();
 
-    // Get prompt
-    let prompt = promptInput.value.trim();
+    // Get prompt (keep original separate)
+    const originalPrompt = promptInput.value.trim();
     const styleKnobsData = collectStyleKnobsData();
     const styleKnobsString = formatStyleKnobsString(styleKnobsData);
-    prompt = prompt + styleKnobsString;
-    if (!prompt) {
+    const fullPromptForGeneration = originalPrompt + styleKnobsString; // Only for generation
+
+    if (!originalPrompt) {
         showStatus("Please add a description!", 60000);
         return;
     }
 
     // Show status to user
     showStatus("Processing your sketch...");
-    console.log('Processing sketch with prompt "' + prompt + '"');
+    console.log(
+        'Processing sketch with prompt "' + fullPromptForGeneration + '"'
+    );
 
     // Get the image as PNG from canvas
     const imageData = getCanvasImageAsPNG();
@@ -86,11 +89,11 @@ function generateImageWithCanvasInput() {
         .then((finalInputFileName) => {
             console.log(`File uploaded to S3 as ${finalInputFileName}`);
             console.log(
-                `Generating image with prompt="${prompt}", workflow="${workflow}", ` +
+                `Generating image with prompt="${fullPromptForGeneration}", workflow="${workflow}", ` +
                     `aspectRatio="${aspectRatio}", inputFilename="${finalInputFileName}"`
             );
             return generateImageWithInput(
-                prompt,
+                fullPromptForGeneration, // Use full prompt for generation
                 workflow,
                 aspectRatio,
                 finalInputFileName
@@ -99,7 +102,7 @@ function generateImageWithCanvasInput() {
         .then((response) => {
             console.log(response);
             const jobId = response.id;
-            updateUrlWithParams(jobId, prompt);
+            updateUrlWithParams(jobId, originalPrompt); // Use original prompt for URL
             startPolling(jobId);
 
             // Handle successful upload
