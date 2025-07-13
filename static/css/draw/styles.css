@@ -13,6 +13,7 @@
     --navbar-bg: #007bff;
     --navbar-text: white;
     --input-bg: white;
+    --input-prompt-bg: white;
     --error-color: #dc3545;
     --placeholder-border: #ddd;
     --placeholder-text: #444;
@@ -39,6 +40,7 @@
     --canvas-control-button-active-color: #1890ff;
     --drawing-canvas-bg: #f5f5f5;
     --style-knobs-border-color: #eee;
+    --container-alt-bg: #f5f5f5;
 }
 
 /* Dark theme variables */
@@ -51,6 +53,7 @@
     --navbar-bg: #222222;
     --navbar-text: #ffffff;
     --input-bg: #3d3d3d;
+    --input-prompt-bg: #2d2d2d;
     --error-color: #ff6b6b;
     --placeholder-border: #404040;
     --placeholder-text: #999;
@@ -78,6 +81,7 @@
     --canvas-control-button-active-color: #eee;
     --drawing-canvas-bg: #0c0c0c;
     --style-knobs-border-color: #202020;
+    --container-alt-bg: #1a1a1a;
 }
 
 /* Prevent theme flash */
@@ -262,7 +266,7 @@ canvas {
 
 #bottom-bar {
     /* border-top: 1px solid #eee; */
-    background-color: var(--container-bg);
+    background-color: var(--container-alt-bg);
     color: white;
     padding: 15px;
     display: flex;
@@ -281,7 +285,7 @@ canvas {
     resize: none;
     font-family: Source Sans Pro, Arial, sans-serif;
     box-sizing: border-box;
-    background-color: var(--input-bg);
+    background-color: var(--input-prompt-bg);
     transition: background-color 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
@@ -371,8 +375,9 @@ canvas {
 }
 
 #style-knobs-container {
-    border-top: 1px solid var(--style-knobs-border-color);
-    background-color: var(--container-bg);
+    border-top: 1px solid var(--result-panel-bg);
+    /* background-color: var(--container-bg); */
+    background-color: var(--container-alt-bg);
     padding: 15px 15px 5px 15px;
     max-height: 400px;
     overflow-y: auto;
@@ -393,12 +398,13 @@ canvas {
     flex-direction: column;
     /* align-items: center; */
     justify-content: center;
-    background-color: var(--input-bg);
+    background-color: var(--input-prompt-bg);
     border: 1px solid var(--input-bg);
     border-radius: 8px;
     padding: 8px 15px;
     box-sizing: border-box;
     position: relative;
+    transition: all 0.3s;
 }
 
 .delete-knob-btn {
