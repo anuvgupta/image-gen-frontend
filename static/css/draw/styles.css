@@ -2,6 +2,84 @@
 
 @import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300italic,600italic,300,400,500,600");
 
+/* Theme variables */
+:root {
+    /* Light theme variables */
+    --bg-color: #f5f5f5;
+    --container-bg: #f5f5f5;
+    --text-color: #000000;
+    --border-color: #eee;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --navbar-bg: #007bff;
+    --navbar-text: white;
+    --input-bg: white;
+    --error-color: #dc3545;
+    --placeholder-border: #ddd;
+    --placeholder-text: #444;
+    --progress-bg: #f0f0f0;
+    --status-text: #666;
+    --details-text: #888;
+    --result-panel-bg: #fff;
+    --result-panel-border-color: #f5f5f5;
+    --input-dash-background-color: #f5f5f5;
+    --input-dash-background-color-hover: #e6f7ff;
+    --input-dash-border-color: #d0d0d0;
+    --input-dash-border-hover-color: #1890ff;
+    --input-dash-hover-color: #1890ff;
+    --knob-label-text: #222;
+    --knob-value-text: #666;
+    --canvas-control-circle: #222;
+    --canvas-control-text: #222;
+    --canvas-control-background: rgba(255, 255, 255, 0.9);
+    --canvas-control-button-bg: rgba(255, 255, 255, 0.8);
+    --canvas-control-button-hover-bg: rgba(255, 255, 255, 1);
+    --canvas-control-button-active-bg: #e6f7ff;
+    --canvas-control-border-color: #ccc;
+    --canvas-control-border-width: 1px;
+    --canvas-control-button-active-color: #1890ff;
+}
+
+/* Dark theme variables */
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+    --container-bg: #2d2d2d;
+    --text-color: #030303;
+    --border-color: #404040;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --navbar-bg: #222222;
+    --navbar-text: #ffffff;
+    --input-bg: #3d3d3d;
+    --error-color: #ff6b6b;
+    --placeholder-border: #404040;
+    --placeholder-text: #999;
+    --progress-bg: #404040;
+    --status-text: #999;
+    --details-text: #888;
+    --result-panel-bg: #1a1a1a;
+    --result-panel-border-color: #2d2d2d;
+    --input-dash-background-color: #2d2d2d;
+    --input-dash-background-color-hover: #343434;
+    --input-dash-border-color: #555;
+    --input-dash-border-hover-color: #6e6e6e;
+    --input-dash-hover-color: #999;
+    --knob-label-text: #ddd;
+    --knob-value-text: #888;
+    --canvas-control-circle: #ddd;
+    --canvas-control-text: #bfbfbf;
+    --canvas-control-background: rgba(10, 10, 10, 0.9);
+    --canvas-control-button-bg: rgba(25, 25, 25, 0.8);
+    --canvas-control-button-hover-bg: rgba(35, 35, 35, 1);
+    --canvas-control-button-active-bg: rgba(45, 45, 45, 1);
+    --canvas-control-border-color: #8a8a8a;
+    --canvas-control-border-width: 1px;
+    --canvas-control-button-active-color: #eee;
+}
+
+/* Prevent theme flash */
+.theme-transition-disabled * {
+    transition: none !important;
+}
+
 * {
     font-family: Source Sans Pro, Arial, sans-serif;
 }
@@ -14,6 +92,7 @@ body {
     flex-direction: column;
     height: 100vh;
     font-family: Source Sans Pro, Arial, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .app-container {
@@ -56,15 +135,16 @@ canvas {
     right: 10px;
     display: flex;
     gap: 10px;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: var(--canvas-control-background);
     padding: 8px 10px;
     border-radius: 6px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 #canvas-controls button {
-    background-color: rgba(255, 255, 255, 0.8);
-    border: 1px solid #ccc;
+    /* background-color: rgba(255, 255, 255, 0.8); */
+    background-color: var(--canvas-control-button-bg);
+    border: var(--canvas-control-border-width) solid var(--canvas-control-border-color);
     border-radius: 4px;
     padding: 8px 12px;
     cursor: pointer;
@@ -72,22 +152,34 @@ canvas {
     display: flex;
     align-items: center;
     gap: 5px;
-    transition: background-color 0.2s;
+    transition: all 0.3s;
+    color: var(--canvas-control-text);
+    box-sizing: border-box;
 }
 
 #canvas-controls button:hover {
-    background-color: rgba(255, 255, 255, 1);
+    background-color: var(--canvas-control-button-hover-bg);
 }
 
 #canvas-controls button.active {
     background-color: #e6f7ff;
-    border-color: #1890ff;
+    background-color: var(--canvas-control-button-active-bg);
+    border-color: var(--canvas-control-button-active-color);
+    color: var(--canvas-control-button-active-color);
+}
+
+#canvas-controls button .icon {
+    stroke: var(--canvas-control-text);
+}
+
+#canvas-controls button.active .icon {
+    stroke: var(--canvas-control-button-active-color);
 }
 
 .tool-group {
     display: flex;
     align-items: center;
-    border-right: 1px solid #eee;
+    border-right: 1px solid var(--canvas-control-border-color);
     padding-right: 10px;
     margin-right: 0;
     gap: 5px;
@@ -121,6 +213,7 @@ canvas {
 .brush-size-btn div {
     background-color: #000;
     border-radius: 50%;
+    background-color: var(--canvas-control-circle);
 }
 
 .brush-size-small div {
@@ -160,12 +253,13 @@ canvas {
 
 #bottom-bar {
     /* border-top: 1px solid #eee; */
-    background-color: #f5f5f5;
+    background-color: var(--container-bg);
     color: white;
     padding: 15px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    transition: background-color 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
 #prompt-input {
@@ -178,6 +272,8 @@ canvas {
     resize: none;
     font-family: Source Sans Pro, Arial, sans-serif;
     box-sizing: border-box;
+    background-color: var(--input-bg);
+    transition: background-color 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
 #submit-button {
@@ -203,12 +299,13 @@ canvas {
 
 #result-container {
     width: 40%;
-    background-color: var(--container-bg);
-    border-left: 1px solid var(--border-color);
+    background-color: var(--result-panel-bg);
+    border-left: 1px solid var(--result-panel-border-color);
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
     flex: 1;
+    transition: background-color 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
 .result-header {
@@ -244,8 +341,9 @@ canvas {
 }
 
 #result-placeholder {
-    color: #333;
+    color: var(--placeholder-text);
     text-align: center;
+    transition: color 0.3s ease;
 }
 
 #toggle-result {
@@ -264,11 +362,12 @@ canvas {
 }
 
 #style-knobs-container {
-    border-top: 1px solid #eee;
-    background-color: #f5f5f5;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--container-bg);
     padding: 15px 15px 5px 15px;
     max-height: 400px;
     overflow-y: auto;
+    transition: background-color 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
 #style-knobs-grid {
@@ -285,8 +384,8 @@ canvas {
     flex-direction: column;
     /* align-items: center; */
     justify-content: center;
-    background-color: white;
-    border: 1px solid white;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-bg);
     border-radius: 8px;
     padding: 8px 15px;
     box-sizing: border-box;
@@ -300,7 +399,7 @@ canvas {
     width: 16px;
     height: 16px;
     background-color: #ff7875;
-    border: 1px solid white;
+    border: 1px solid var(--input-bg);
     border-radius: 50%;
     cursor: pointer;
     display: flex;
@@ -309,7 +408,7 @@ canvas {
     font-size: 10px;
     color: white;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.3s;
     line-height: 10px;
 }
 
@@ -331,6 +430,7 @@ canvas {
     text-overflow: ellipsis;
     white-space: nowrap;
     padding-bottom: 3px;
+    color: var(--knob-label-text);
 }
 
 .knob-slider {
@@ -341,19 +441,21 @@ canvas {
     outline: none;
     margin: 5px auto;
     opacity: 0.85;
+    cursor: pointer;
 }
 
 .knob-value {
     font-size: 12px;
-    color: #666;
+    color: var(--knob-value-text);
     padding-top: 3px;
 }
 
 .add-knob-button {
     width: 200px;
-    height: 70px;
-    background-color: #f0f0f0;
-    border: 2px dashed #d0d0d0;
+    /* height: 70px; */
+    height: 75px;
+    background-color: var(--input-dash-background-color);
+    border: 2px dashed var(--input-dash-border-color);
     border-radius: 8px;
     cursor: pointer;
     display: flex;
@@ -363,13 +465,13 @@ canvas {
     gap: 6px;
     font-size: 14px;
     color: #777;
-    transition: all 0.2s;
+    transition: all 0.3s;
 }
 
 .add-knob-button:hover {
-    background-color: #e6f7ff;
-    border-color: #1890ff;
-    color: #1890ff;
+    background-color: var(--input-dash-background-color-hover);
+    border-color: var(--input-dash-border-hover-color);
+    color: var(--input-dash-hover-color);
 }
 
 #knob-plus-icon-svg {
@@ -407,3 +509,131 @@ canvas {
         cursor: pointer;
     }
 } */
+
+
+
+.theme-toggle-bar {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    background-color: var(--container-bg);
+    padding: 0.5rem;
+    border-radius: 2rem;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-toggle-bar:hover {
+    transform: translateY(-2px);
+}
+
+.theme-toggle {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+    background-color: var(--shadow-color);
+}
+
+.theme-icon {
+    width: 20px;
+    height: 20px;
+    transition: all 0.3s ease;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    position: absolute;
+    opacity: 0.7;
+}
+
+/* Keep full opacity in dark mode */
+[data-theme="dark"] .theme-icon {
+    opacity: 1;
+    stroke: #ddd;
+}
+
+/* Icon display states */
+/* Show only sun icon by default (light mode) */
+[data-theme="light"] .theme-toggle .sun-icon {
+    display: block;
+}
+
+[data-theme="light"] .theme-toggle .moon-icon {
+    display: none;
+}
+
+[data-theme="light"] .theme-toggle .gear-icon {
+    display: none;
+}
+
+/* In dark mode, show only moon icon */
+[data-theme="dark"] .theme-toggle .sun-icon {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle .moon-icon {
+    display: block;
+}
+
+[data-theme="dark"] .theme-toggle .gear-icon {
+    display: none;
+}
+
+/* Show gear icon when system theme is active */
+.theme-toggle.system-theme .sun-icon {
+    display: none;
+}
+
+.theme-toggle.system-theme .moon-icon {
+    display: none;
+}
+
+.theme-toggle.system-theme .gear-icon {
+    display: block;
+}
+
+/* Optional: Add rotation animation to gear icon */
+/* .theme-toggle.system-theme .gear-icon {
+    animation: spin 10s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+} */
+
+/* Make toggle bar responsive */
+@media (max-width: 768px) {
+    .theme-toggle-bar {
+        bottom: 1rem;
+        right: 1rem;
+    }
+
+    .theme-toggle {
+        padding: 0.5rem;
+    }
+
+    .theme-icon {
+        font-size: 1rem;
+    }
+}
