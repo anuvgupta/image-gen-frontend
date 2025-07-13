@@ -80,7 +80,7 @@
     --canvas-control-border-width: 1px;
     --canvas-control-button-active-color: #eee;
     --drawing-canvas-bg: #0c0c0c;
-    --style-knobs-border-color: #202020;
+    --style-knobs-border-color: #1e1e1e;
     --container-alt-bg: #1a1a1a;
 }
 
@@ -271,7 +271,7 @@ canvas {
     padding: 15px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
     transition: background-color 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
@@ -375,7 +375,7 @@ canvas {
 }
 
 #style-knobs-container {
-    border-top: 1px solid var(--result-panel-bg);
+    border-top: 1px solid var(--style-knobs-border-color);
     /* background-color: var(--container-bg); */
     background-color: var(--container-alt-bg);
     padding: 15px 15px 5px 15px;
