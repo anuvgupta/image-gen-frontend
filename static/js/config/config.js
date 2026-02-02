@@ -78,12 +78,26 @@ export const LOADING_PROGRESS_STATE = {
 export const isProd = () => {
     const HOST_NAME = `${window.location.hostname}`;
     return (
-        !HOST_NAME.includes("-dev") && window.location.hostname != "localhost"
+        !HOST_NAME.includes("-dev") &&
+        !HOST_NAME.includes("dev.") &&
+        window.location.hostname != "localhost"
     );
 };
+export const onAlternateDomain = () => {
+    const BASE_DOMAIN_ALT = "sketchy.sh";
+    return window.location.hostname.endsWith(BASE_DOMAIN_ALT);
+};
 export const getBaseUrl = () => {
-    const BASE_DOMAIN_DEV = "images-api-dev.anuv.me";
-    const BASE_DOMAIN_PROD = "images-api.anuv.me";
+    const BASE_DOMAIN_ORIG_DEV = "images-api-dev.anuv.me";
+    const BASE_DOMAIN_ORIG_PROD = "images-api.anuv.me";
+    const BASE_DOMAIN_ALT_DEV = "api-dev.sketchy.sh";
+    const BASE_DOMAIN_ALT_PROD = "api.sketchy.sh";
+    const BASE_DOMAIN_PROD = onAlternateDomain()
+        ? BASE_DOMAIN_ALT_PROD
+        : BASE_DOMAIN_ORIG_PROD;
+    const BASE_DOMAIN_DEV = onAlternateDomain()
+        ? BASE_DOMAIN_ALT_DEV
+        : BASE_DOMAIN_ORIG_DEV;
     const BASE_DOMAIN = isProd() ? BASE_DOMAIN_PROD : BASE_DOMAIN_DEV;
     return `https://${BASE_DOMAIN}`;
 };
